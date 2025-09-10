@@ -5,22 +5,37 @@ from redbot.core import commands
 
 RIDDLES = [
     {"riddle": "What has keys but can't open locks?", "answer": "A piano"},
-    {"riddle": "What runs but never walks, has a mouth but never talks?", "answer": "A river"},
-    {"riddle": "What can travel around the world while staying in a corner?", "answer": "A stamp"},
-    {"riddle": "What has a head, a tail, is brown, and has no legs?", "answer": "A penny"},
+    {
+        "riddle": "What runs but never walks, has a mouth but never talks?",
+        "answer": "A river",
+    },
+    {
+        "riddle": "What can travel around the world while staying in a corner?",
+        "answer": "A stamp",
+    },
+    {
+        "riddle": "What has a head, a tail, is brown, and has no legs?",
+        "answer": "A penny",
+    },
     {
         "riddle": "What comes once in a minute, twice in a moment, but never in a thousand years?",
         "answer": "The letter M",
     },
     {"riddle": "What is full of holes but still holds water?", "answer": "A sponge"},
-    {"riddle": "What is always in front of you but can’t be seen?", "answer": "The future"},
+    {
+        "riddle": "What is always in front of you but can’t be seen?",
+        "answer": "The future",
+    },
     {"riddle": "What has a heart that doesn’t beat?", "answer": "An artichoke"},
     {"riddle": "What has to be broken before you can use it?", "answer": "An egg"},
     {
         "riddle": "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
         "answer": "An echo",
     },
-    {"riddle": "The more you take, the more you leave behind. What am I?", "answer": "Footsteps"},
+    {
+        "riddle": "The more you take, the more you leave behind. What am I?",
+        "answer": "Footsteps",
+    },
     {
         "riddle": "I’m tall when I’m young, and I’m short when I’m old. What am I?",
         "answer": "A candle",
@@ -37,7 +52,10 @@ RIDDLES = [
         "riddle": "You see me once in June, twice in November, but not at all in May. What am I?",
         "answer": "The letter E",
     },
-    {"riddle": "I have branches, but no fruit, trunk or leaves. What am I?", "answer": "A bank"},
+    {
+        "riddle": "I have branches, but no fruit, trunk or leaves. What am I?",
+        "answer": "A bank",
+    },
     {"riddle": "What can you catch, but not throw?", "answer": "A cold"},
     {
         "riddle": "If you drop me, I’m sure to crack, but give me a smile and I’ll always smile back. What am I?",
@@ -50,18 +68,36 @@ RIDDLES = [
         "riddle": "What has a bed but never sleeps, can run but never walks, and has a bank but no money?",
         "answer": "A river",
     },
-    {"riddle": "What word is spelled incorrectly in every dictionary?", "answer": "Incorrectly"},
-    {"riddle": "What begins with T, ends with T, and has T in it?", "answer": "A teapot"},
-    {"riddle": "Forward I am heavy, but backward I am not. What am I?", "answer": "A ton"},
+    {
+        "riddle": "What word is spelled incorrectly in every dictionary?",
+        "answer": "Incorrectly",
+    },
+    {
+        "riddle": "What begins with T, ends with T, and has T in it?",
+        "answer": "A teapot",
+    },
+    {
+        "riddle": "Forward I am heavy, but backward I am not. What am I?",
+        "answer": "A ton",
+    },
     {"riddle": "What has hands, but can’t clap?", "answer": "A clock"},
     {"riddle": "What goes up but never comes down?", "answer": "Your age"},
     {"riddle": "What has four wheels and flies?", "answer": "A garbage truck"},
     {"riddle": "What comes down but never goes up?", "answer": "Rain"},
-    {"riddle": "What is so fragile that saying its name breaks it?", "answer": "Silence"},
+    {
+        "riddle": "What is so fragile that saying its name breaks it?",
+        "answer": "Silence",
+    },
     {"riddle": "What can fill a room but takes up no space?", "answer": "Light"},
-    {"riddle": "What begins with an E but only has one letter?", "answer": "An envelope"},
+    {
+        "riddle": "What begins with an E but only has one letter?",
+        "answer": "An envelope",
+    },
     {"riddle": "What has a neck but no head?", "answer": "A bottle"},
-    {"riddle": "What belongs to you but is used more by others?", "answer": "Your name"},
+    {
+        "riddle": "What belongs to you but is used more by others?",
+        "answer": "Your name",
+    },
     {
         "riddle": "I’m light as a feather, yet the strongest man can’t hold me for more than 5 minutes. What am I?",
         "answer": "Your breath",
@@ -74,7 +110,10 @@ RIDDLES = [
         "riddle": "I’m not alive, but I can grow; I don’t have lungs, but I need air; I don’t have a mouth, and I can drown. What am I?",
         "answer": "A fire",
     },
-    {"riddle": "The more of this there is, the less you see. What is it?", "answer": "Darkness"},
+    {
+        "riddle": "The more of this there is, the less you see. What is it?",
+        "answer": "Darkness",
+    },
     {"riddle": "What has a ring but no finger?", "answer": "A telephone"},
     {"riddle": "What has one head, one foot, and four legs?", "answer": "A bed"},
     {"riddle": "What can’t be put in a saucepan?", "answer": "Its lid"},
@@ -84,9 +123,15 @@ RIDDLES = [
     {"riddle": "What kind of room has no doors or windows?", "answer": "A mushroom"},
     {"riddle": "What kind of tree can you carry in your hand?", "answer": "A palm"},
     {"riddle": "What gets bigger the more you take away?", "answer": "A hole"},
-    {"riddle": "I shave every day, but my beard stays the same. What am I?", "answer": "A barber"},
+    {
+        "riddle": "I shave every day, but my beard stays the same. What am I?",
+        "answer": "A barber",
+    },
     {"riddle": "What tastes better than it smells?", "answer": "Your tongue"},
-    {"riddle": "What has a thumb and four fingers but is not alive?", "answer": "A glove"},
+    {
+        "riddle": "What has a thumb and four fingers but is not alive?",
+        "answer": "A glove",
+    },
     {"riddle": "What has no beginning, end, or middle?", "answer": "A doughnut"},
     {
         "riddle": "What is always hungry, must be fed, but dies when given a drink?",
@@ -111,7 +156,10 @@ RIDDLES = [
         "answer": "Seven",
     },
     {"riddle": "What has a bark but no bite?", "answer": "A tree"},
-    {"riddle": "What invention lets you look right through a wall?", "answer": "A window"},
+    {
+        "riddle": "What invention lets you look right through a wall?",
+        "answer": "A window",
+    },
     {
         "riddle": "What has a lock but no key, can be put in a hole but not dug out?",
         "answer": "A padlock",
@@ -141,12 +189,24 @@ RIDDLES = [
         "riddle": "What comes once in a year, twice in a month, four times in a week, and six times in a day?",
         "answer": "The letter E",
     },
-    {"riddle": "What goes through cities and fields, but never moves?", "answer": "A road"},
+    {
+        "riddle": "What goes through cities and fields, but never moves?",
+        "answer": "A road",
+    },
     {"riddle": "What can fill a room but is invisible?", "answer": "Air"},
-    {"riddle": "What is so light that a feather can’t hold it down?", "answer": "A soap bubble"},
+    {
+        "riddle": "What is so light that a feather can’t hold it down?",
+        "answer": "A soap bubble",
+    },
     {"riddle": "What comes down but never goes up?", "answer": "Rain"},
-    {"riddle": "What has a head, a tail, is brown, and has no legs?", "answer": "A penny"},
-    {"riddle": "What is always in front of you but can’t be seen?", "answer": "The future"},
+    {
+        "riddle": "What has a head, a tail, is brown, and has no legs?",
+        "answer": "A penny",
+    },
+    {
+        "riddle": "What is always in front of you but can’t be seen?",
+        "answer": "The future",
+    },
     {
         "riddle": "What word is spelled the same forwards, backwards, and upside down?",
         "answer": "NOON",
@@ -168,7 +228,10 @@ RIDDLES = [
         "riddle": "I am taken from a mine, and shut up in a wooden case, from which I am never released, and yet I am used by almost every person. What am I?",
         "answer": "A pencil",
     },
-    {"riddle": "What has a face and two hands, but no arms or legs?", "answer": "A clock"},
+    {
+        "riddle": "What has a face and two hands, but no arms or legs?",
+        "answer": "A clock",
+    },
 ]
 
 
@@ -177,8 +240,12 @@ class ViewAnswer(discord.ui.View):
         super().__init__(timeout=300)
         self.answer = answer
 
-    @discord.ui.button(emoji="\N{BRAIN}", label="View Answer", style=discord.ButtonStyle.secondary)
-    async def _view_answer(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(
+        emoji="\N{BRAIN}", label="View Answer", style=discord.ButtonStyle.secondary
+    )
+    async def _view_answer(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         if interaction.response.is_done():
             await interaction.followup.send(f"{self.answer}", ephemeral=True)
         else:

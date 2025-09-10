@@ -24,7 +24,7 @@ class BlackFormatter(commands.Cog):
         return
 
     @commands.has_permissions(attach_files=True)
-    @commands.command(name="black", usage=f"<file> [line_length=None]")
+    @commands.command(name="black", usage="<file> [line_length=None]")
     async def _black(self, ctx: commands.Context, line_length: Optional[int] = None):
         """Format a python file with black.
 
@@ -32,32 +32,36 @@ class BlackFormatter(commands.Cog):
         Your `line_length` is black setting. If it is not provided, it defaults to the
         configured black line length (the default, unchanged, is 88).
         """
-        await ctx.typing()
-        if not ctx.message.attachments:
-            return await ctx.send_help()
-        attachment_file = ctx.message.attachments[0]
-        if not attachment_file.filename.lower().endswith(".py"):
-            return await ctx.send("Must be a python file.")
+        async with ctx.typing():
+            if not ctx.message.attachments:
+                return await ctx.send_help()
+            attachment_file = ctx.message.attachments[0]
+            if not attachment_file.filename.lower().endswith(".py"):
+                return await ctx.send("Must be a python file.")
 
-        file = await attachment_file.read()
-        try:
-            sort = file.decode(encoding="utf-8")
-        except UnicodeDecodeError:
-            return await ctx.send("Something went wrong when trying to decode this file.")
+            file = await attachment_file.read()
+            try:
+                sort = file.decode(encoding="utf-8")
+            except UnicodeDecodeError:
+                return await ctx.send(
+                    "Something went wrong when trying to decode this file."
+                )
 
-        try:
-            output = black.format_file_contents(
-                sort,
-                fast=True,
-                mode=black.FileMode(line_length=line_length or black.DEFAULT_LINE_LENGTH),
-            )
-        except black.NothingChanged:
-            await ctx.send("There was nothing to change in this code.")
-        else:
-            await ctx.send(
-                content="See the attached file below, with your formatted code.",
-                file=discord.File(
-                    io.BytesIO(output.encode(encoding="utf-8")),
-                    filename=attachment_file.filename.lower(),
-                ),
-            )
+            try:
+                output = black.format_file_contents(
+                    sort,
+                    fast=True,
+                    mode=black.FileMode(
+                        line_length=line_length or black.DEFAULT_LINE_LENGTH
+                    ),
+                )
+            except black.NothingChanged:
+                await ctx.send("There was nothing to change in this code.")
+            else:
+                await ctx.send(
+                    content="See the attached file below, with your formatted code.",
+                    file=discord.File(
+                        io.BytesIO(output.encode(encoding="utf-8")),
+                        filename=attachment_file.filename.lower(),
+                    ),
+                )

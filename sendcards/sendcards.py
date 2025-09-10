@@ -249,9 +249,13 @@ class CardBodyModal(discord.ui.Modal):
     REGARD_DEFAULT = "From {sender.name}"
 
     async def on_submit(self, interaction: discord.Interaction):
-        description = self.greet.value or self.GREET_DEFAULT.format(recipient=self.recipient)
+        description = self.greet.value or self.GREET_DEFAULT.format(
+            recipient=self.recipient
+        )
         description += "\n\n" + self.body.value + "\n\n"
-        description += self.regard.value or self.REGARD_DEFAULT.format(sender=self.sender)
+        description += self.regard.value or self.REGARD_DEFAULT.format(
+            sender=self.sender
+        )
         emoji = self.card_data["emoji"]
         embed = discord.Embed(
             title=f"{emoji} {self.card_data['name']} card {emoji}",
@@ -259,7 +263,10 @@ class CardBodyModal(discord.ui.Modal):
             colour=self.card_data["colour"],
         )
         await OpenCardButtonView(
-            embed, sender=self.sender, recipient=self.recipient, card_content=self.card_content
+            embed,
+            sender=self.sender,
+            recipient=self.recipient,
+            card_content=self.card_content,
         ).start_from_interaction(self.ctx, interaction)
 
 
@@ -308,7 +315,7 @@ class OpenCardButtonView(discord.ui.View):
 
     async def get_card_front_embed(self, ctx: Context):
         embed = discord.Embed(
-            title=f"\U0001f4e8 You have received a card!",
+            title="\U0001f4e8 You have received a card!",
             description="Interact with the button below to open it.",
             color=await ctx.embed_colour(),
         )
@@ -325,7 +332,9 @@ class OpenCardButtonView(discord.ui.View):
 
         return embed
 
-    async def start_from_interaction(self, ctx: Context, interaction: discord.Interaction):
+    async def start_from_interaction(
+        self, ctx: Context, interaction: discord.Interaction
+    ):
         self.add_item(OpenCardButton(ctx, self.card_embed))
         self.add_item(
             ReplyButton(
@@ -345,7 +354,7 @@ class OpenCardButtonView(discord.ui.View):
             )
         else:
             await interaction.response.send_message(
-                f"\U0001f4e8 Sent! Make sure that you allow DM messages from me, for the recipient may want to send a card back.",
+                "\U0001f4e8 Sent! Make sure that you allow DM messages from me, for the recipient may want to send a card back.",
                 ephemeral=True,
             )
 
@@ -411,4 +420,6 @@ class SendCards(commands.Cog):
     @sendcard.command()
     async def types(self, ctx: commands.Context):
         """List all the different card types."""
-        await ctx.maybe_send_embed("\n".join(f"{c['emoji']} {c['name']}" for c in CARD_TYPES_DATA))
+        await ctx.maybe_send_embed(
+            "\n".join(f"{c['emoji']} {c['name']}" for c in CARD_TYPES_DATA)
+        )

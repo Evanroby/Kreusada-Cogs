@@ -9,7 +9,14 @@ from typing import Optional
 
 import discord
 from redbot.core import commands
-from redbot.core.utils.chat_formatting import bold, box, error, humanize_list, pagify, success
+from redbot.core.utils.chat_formatting import (
+    bold,
+    box,
+    error,
+    humanize_list,
+    pagify,
+    success,
+)
 
 
 async def send_safe(ctx, message: str) -> None:
@@ -39,7 +46,9 @@ class TextEditor(commands.Cog):
         self.bot = bot
         if 719988449867989142 in self.bot.owner_ids:
             with contextlib.suppress(RuntimeError, ValueError):
-                self.bot.add_dev_env_value(self.__class__.__name__.lower(), lambda x: self)
+                self.bot.add_dev_env_value(
+                    self.__class__.__name__.lower(), lambda x: self
+                )
 
     def format_help_for_context(self, ctx: commands.Context) -> str:
         context = super().format_help_for_context(ctx)
@@ -111,7 +120,9 @@ class TextEditor(commands.Cog):
         await send_safe(ctx, text.replace(remove, ""))
 
     @editor.command(name="trim", aliases=["strip"])
-    async def editor_trim(self, ctx: commands.Context, trimmer: Optional[str] = " ", *, text: str):
+    async def editor_trim(
+        self, ctx: commands.Context, trimmer: Optional[str] = " ", *, text: str
+    ):
         """Trim the outskirts of the text."""
         await send_safe(ctx, text.strip(trimmer))
 
@@ -128,7 +139,9 @@ class TextEditor(commands.Cog):
         await send_safe(ctx, text[::-1])
 
     @editor.command(name="multiply")
-    async def editor_multiply(self, ctx: commands.Context, multiplier: int, *, text: str):
+    async def editor_multiply(
+        self, ctx: commands.Context, multiplier: int, *, text: str
+    ):
         """Multiply the text."""
         await send_safe(ctx, text * multiplier)
 
@@ -145,17 +158,23 @@ class TextEditor(commands.Cog):
                 "Please don't use backticks or newlines in the permutator."
             )
         if len(text) > 250:
-            raise commands.UserFeedbackCheckFailure("Too many characters were provided.")
+            raise commands.UserFeedbackCheckFailure(
+                "Too many characters were provided."
+            )
         split = text.split()
         if len(split) > 8:
-            raise commands.UserFeedbackCheckFailure("Please only provide up to 8 arguments.")
+            raise commands.UserFeedbackCheckFailure(
+                "Please only provide up to 8 arguments."
+            )
         permutations = [" ".join(p) for p in itertools.permutations(split)]
         message = "Generated permutations (%s [!%s])" % (len(permutations), len(split))
         join = "\n".join(permutations)
         if len(permutations) > 24:
             message += "\n(See attached file for full permutation)\n\n"
             message += "\n".join(permutations[:24])
-            file = discord.File(io.BytesIO(join.encode("utf-8")), filename="permutations.txt")
+            file = discord.File(
+                io.BytesIO(join.encode("utf-8")), filename="permutations.txt"
+            )
         else:
             message += "\n" + join
             file = None
@@ -235,7 +254,9 @@ class TextEditor(commands.Cog):
         if len(palindromes) == 1:
             msg = success("The following palindrome was found: " + palindromes[0])
         elif palindromes:
-            msg = success("The following palindromes were found: " + humanize_list(palindromes))
+            msg = success(
+                "The following palindromes were found: " + humanize_list(palindromes)
+            )
         else:
             msg = error("No palindromes found.")
         await send_safe(ctx, msg)

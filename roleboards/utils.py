@@ -40,7 +40,10 @@ def format_embed_pages(
 ):
     pages = []
     enum = 1
-    two_digits = lambda x: f"0{x}" if len(str(x)) == 1 else x
+
+    def two_digits(x):
+        return f"0{x}" if len(str(x)) == 1 else x
+
     reverse_types = {"roles": "members", "members": "roles"}
     total_data = len(getattr(ctx.guild, data_type))
 
@@ -49,7 +52,8 @@ def format_embed_pages(
 
     for sector in data:
         description = "\n".join(
-            f"#{two_digits(c)} [{two_digits(v[1])}] {v[0]}" for c, v in enumerate(sector, enum)
+            f"#{two_digits(c)} [{two_digits(v[1])}] {v[0]}"
+            for c, v in enumerate(sector, enum)
         )
         embed = discord.Embed(
             title=f"{data_type.capitalize()} with the most {reverse_types[data_type]}",
@@ -57,10 +61,11 @@ def format_embed_pages(
             color=embed_colour,
         )
 
-        embed.set_footer(text=f"Page {data.index(sector)+1}/{len(data)}")
+        embed.set_footer(text=f"Page {data.index(sector) + 1}/{len(data)}")
 
         embed.set_author(
-            name=ctx.guild.name + f" | {total_data} {data_type}", icon_url=ctx.guild.icon.url if ctx.guild.icon else None
+            name=ctx.guild.name + f" | {total_data} {data_type}",
+            icon_url=ctx.guild.icon.url if ctx.guild.icon else None,
         )
 
         pages.append(embed)
@@ -69,13 +74,15 @@ def format_embed_pages(
     return pages
 
 
-def yield_chunks(l, n):
-    for i in range(0, len(l), n):
-        yield l[i : i + n]
+def yield_chunks(items, n):
+    for i in range(0, len(items), n):
+        yield items[i : i + n]
 
 
 def get_roles(guild: discord.Guild, *, index: int):
-    key = lambda x: len(x.members)
+    def key(x):
+        return len(x.members)
+
     roles = [r for r in guild.roles if r.id != guild.id]  # exclude @everyone
     top_roles = sorted(roles, key=key, reverse=True)
     data = [(x.name, len(x.members)) for x in top_roles[:index]]
@@ -83,7 +90,9 @@ def get_roles(guild: discord.Guild, *, index: int):
 
 
 def get_members(guild: discord.Guild, *, index: int):
-    key = lambda x: len(x.roles)
+    def key(x):
+        return len(x.roles)
+
     top_members = sorted([x for x in guild.members], key=key, reverse=True)
     data = [(x.display_name, len(x.roles) - 1) for x in top_members[:index]]
     return list(yield_chunks(data, 10))

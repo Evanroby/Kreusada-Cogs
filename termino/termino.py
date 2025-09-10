@@ -80,7 +80,9 @@ class Termino(commands.Cog):
     async def maybe_confirm(
         self, ctx: commands.Context, *, type: Literal["shutdown", "restart"]
     ) -> bool:
-        config_obj = getattr(self.config, "{type}_confirmation_message".format(type=type))
+        config_obj = getattr(
+            self.config, "{type}_confirmation_message".format(type=type)
+        )
         message = await config_obj()
         if not message:
             return True
@@ -98,7 +100,9 @@ class Termino(commands.Cog):
             return True
 
     @terminoset_restart.command(name="message")
-    async def terminoset_restart_message(self, ctx: commands.Context, *, message: str) -> None:
+    async def terminoset_restart_message(
+        self, ctx: commands.Context, *, message: str
+    ) -> None:
         """Set Termino's restart message."""
         await self.config.restart_message.set(message)
         await ctx.send("Restart message set.")
@@ -115,7 +119,9 @@ class Termino(commands.Cog):
         await ctx.send("Restart confirmation message set.")
 
     @terminoset_shutdown.command(name="message")
-    async def terminoset_shutdown_message(self, ctx: commands.Context, *, message: str) -> None:
+    async def terminoset_shutdown_message(
+        self, ctx: commands.Context, *, message: str
+    ) -> None:
         """Set Termino's shutdown message."""
         await self.config.shutdown_message.set(message)
         await ctx.send("Shutdown message set.")
@@ -133,7 +139,9 @@ class Termino(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def shutdown(self, ctx: commands.Context, force: Optional[bool] = False) -> None:
+    async def shutdown(
+        self, ctx: commands.Context, force: Optional[bool] = False
+    ) -> None:
         """Shuts down the bot.
 
         Allows [botname] to shut down gracefully.
@@ -152,7 +160,9 @@ class Termino(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def restart(self, ctx: commands.Context, force: Optional[bool] = False) -> None:
+    async def restart(
+        self, ctx: commands.Context, force: Optional[bool] = False
+    ) -> None:
         """Attempts to restart [botname].
 
         Makes [botname] quit with exit code 26.
@@ -188,11 +198,3 @@ class Termino(commands.Cog):
                 content=content,
             )
         await ctx.send(box(message, lang="yaml"))
-
-
-async def setup(bot: Red):
-    global OLD_SHUTDOWN_COMMAND
-    global OLD_RESTART_COMMAND
-    OLD_SHUTDOWN_COMMAND = bot.remove_command("shutdown")
-    OLD_RESTART_COMMAND = bot.remove_command("restart")
-    await bot.add_cog(Termino(bot))

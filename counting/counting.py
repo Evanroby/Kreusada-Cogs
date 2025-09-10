@@ -3,7 +3,7 @@ import datetime
 import typing
 
 import discord
-from discord.utils import find, get
+from discord.utils import find
 from redbot.core import Config, checks, commands
 from redbot.core.bot import Red
 
@@ -18,7 +18,9 @@ class Counting(commands.Cog):
 
     def __init__(self, bot: Red):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1564646215646, force_registration=True)
+        self.config = Config.get_conf(
+            self, identifier=1564646215646, force_registration=True
+        )
 
         self.config.register_guild(
             channel=0,
@@ -58,7 +60,6 @@ class Counting(commands.Cog):
             await self.config.guild(ctx.guild).channel.set(0)
             return await ctx.send("Channel removed.")
         await self.config.guild(ctx.guild).channel.set(channel.id)
-        goal = await self.config.guild(ctx.guild).goal()
         if await self.config.guild(ctx.guild).topic():
             await self._update_topic(channel)
         await ctx.send(f"{channel.name} has been set for counting.")
@@ -69,7 +70,7 @@ class Counting(commands.Cog):
 
         If goal isn't provided, it will be deleted."""
         if not goal:
-            await self.config.guild(ctx.guild).goal.clear()
+            await self.config.guild(ctx.guild).goal.set(0)
             return await ctx.send("Goal removed.")
         await self.config.guild(ctx.guild).goal.set(goal)
         await ctx.send(f"Goal set to {goal}.")
@@ -84,12 +85,10 @@ class Counting(commands.Cog):
             )
         await self.config.guild(ctx.guild).previous.set(number)
         await self.config.guild(ctx.guild).last.clear()
-        goal = await self.config.guild(ctx.guild).goal()
-        next_number = number + 1
         if await self.config.guild(ctx.guild).topic():
             await self._update_topic(channel)
         await channel.send(number)
-        if c_id != ctx.channel.id:
+        if channel and channel.id != ctx.channel.id:
             await ctx.send(f"Counting start set to {number}.")
 
     @countset.command(name="reset")
@@ -111,18 +110,19 @@ class Counting(commands.Cog):
         await self.config.guild(ctx.guild).previous.clear()
         await self.config.guild(ctx.guild).last.clear()
         await c.send("Counting has been reset.")
-        goal = await self.config.guild(ctx.guild).goal()
         if await self.config.guild(ctx.guild).topic():
             await self._update_topic(c)
-        if c_id != ctx.channel.id:
+        if c.id != ctx.channel.id:
             await ctx.send("Counting has been reset.")
 
     @countset.command(name="role")
-    async def countset_role(self, ctx: commands.Context, role: typing.Optional[discord.Role]):
+    async def countset_role(
+        self, ctx: commands.Context, role: typing.Optional[discord.Role]
+    ):
         """Add a whitelisted role."""
         if not role:
             await self.config.guild(ctx.guild).whitelist.clear()
-            await ctx.send(f"Whitelisted role has been deleted.")
+            await ctx.send("Whitelisted role has been deleted.")
         else:
             await self.config.guild(ctx.guild).whitelist.set(role.id)
             await ctx.send(f"{role.name} has been whitelisted.")
@@ -154,7 +154,9 @@ class Counting(commands.Cog):
             await ctx.send("Warning messages are now disabled.")
 
     @countset.command(name="topic")
-    async def countset_topic(self, ctx: commands.Context, on_off: typing.Optional[bool]):
+    async def countset_topic(
+        self, ctx: commands.Context, on_off: typing.Optional[bool]
+    ):
         """Toggle counting channel's topic changing.
 
         If `on_off` is not provided, the state will be flipped.="""
@@ -179,8 +181,12 @@ class Counting(commands.Cog):
 
         warn = "Disabled" if data["warning"] else f"Enabled ({data['seconds']} s)"
 
-        embed = discord.Embed(colour=await ctx.embed_colour(), timestamp=datetime.datetime.now())
-        embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+        embed = discord.Embed(
+            colour=await ctx.embed_colour(), timestamp=datetime.datetime.now()
+        )
+        embed.set_author(
+            name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None
+        )
         embed.title = "**__Counting settings:__**"
         embed.set_footer(text="*required to function properly")
 
@@ -222,10 +228,12 @@ class Counting(commands.Cog):
             if message.author.id != last_id:
                 warn_msg = await message.channel.send(
                     f"The next message in this channel must be {previous + 1}",
-                    delete_after=10
+                    delete_after=10,
                 )
             else:
-                warn_msg = await message.channel.send(f"You cannot count twice in a row.")
+                warn_msg = await message.channel.send(
+                    "You cannot count twice in a row."
+                )
             if seconds != 0:
                 await asyncio.sleep(seconds)
                 await warn_msg.delete()
@@ -267,6 +275,6 @@ class Counting(commands.Cog):
             )
         elif goal != 0 and prev == goal:
             await channel.send("We've reached the goal! :tada:")
-            await channel.edit(topic=f"Goal reached! :tada:")
+            await channel.edit(topic="Goal reached! :tada:")
         else:
             await channel.edit(topic=f"Let's count! | Next message must be {prev + 1}!")

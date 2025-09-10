@@ -1,5 +1,4 @@
 import asyncio
-import contextlib
 import inspect
 import io
 import json
@@ -14,14 +13,13 @@ from qrcode.exceptions import DataOverflowError
 from qrcode.image import styledpil, styles
 from redbot.core import commands
 from redbot.core.bot import Red
-from redbot.core.utils.chat_formatting import humanize_list
 from redbot.core.utils.predicates import MessagePredicate
 
 _EXCLUDED_COLOURS = (
     # These colors are excluded from showing as examples,
     # but they may still be used in the generation of
     # QR codes.
-    "dark_theme" "darker_grey",
+    "dark_themedarker_grey",
     "darker_gray",
     "lighter_grey",
     "lighter_gray",
@@ -84,8 +82,10 @@ If you want the 'classic' QR code style, `1` is the option you'd want to go for.
 """.strip()
 
 DEFAULT_COLOR_MESSAGE_HEADER = "Please provide a **{0}** colour.\n"
-DEFAULT_COLOR_MESSAGE = (
-    lambda: f"""
+
+
+def DEFAULT_COLOR_MESSAGE():
+    return f"""
 This should be provided as a hex code.
 
 Make sure this colour is differentiable.
@@ -100,7 +100,7 @@ Refrain from using colours that would prevent the QR code from working reliably.
 
 **Your next message should be a colour of your choice**
 """.strip()
-)
+
 
 with open(pathlib.Path(__file__).parent / "info.json") as fp:
     __red_end_user_data_statement__ = json.load(fp)["end_user_data_statement"]
@@ -165,9 +165,12 @@ class QR(commands.Cog):
             return ret
 
     async def get_colour_data(self, ctx, shade: Literal["background", "fill"]):
-        check = lambda x: all(
-            operator.eq(getattr(ctx, y), getattr(x, y)) for y in ("author", "channel")
-        )
+        def check(x):
+            return all(
+                operator.eq(getattr(ctx, y), getattr(x, y))
+                for y in ("author", "channel")
+            )
+
         message = DEFAULT_COLOR_MESSAGE_HEADER.format(shade) + DEFAULT_COLOR_MESSAGE()
         await ctx.maybe_send_embed(message)
 
@@ -192,7 +195,10 @@ class QR(commands.Cog):
             },
             "masks": {"message": DEFAULT_MASK_MESSAGE, "kwarg_key": "color_mask"},
         }
-        pred = lambda x: MessagePredicate.contained_in(list(map(str, range(1, x + 1))))
+
+        def pred(x):
+            return MessagePredicate.contained_in(list(map(str, range(1, x + 1))))
+
         await ctx.maybe_send_embed(mapper[style_type]["message"])
         try:
             check = pred(len(self.styles[style_type]))
@@ -201,7 +207,11 @@ class QR(commands.Cog):
             await ctx.send("You took too long to respond, please start over.")
             return False
         else:
-            return {mapper[style_type]["kwarg_key"]: self.styles[style_type][int(message.content)]}
+            return {
+                mapper[style_type]["kwarg_key"]: self.styles[style_type][
+                    int(message.content)
+                ]
+            }
 
     @commands.command()
     async def qr(self, ctx: commands.Context, *, text: str):
@@ -217,7 +227,9 @@ class QR(commands.Cog):
         qrc = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_L)
         qrc.add_data(text)
 
-        pred = lambda x: MessagePredicate.contained_in(list(map(str, range(1, x + 1))))
+        def pred(x):
+            return MessagePredicate.contained_in(list(map(str, range(1, x + 1))))
+
         await ctx.maybe_send_embed(DEFAULT_OPENING_MESSAGE.format(text))
 
         try:
@@ -236,7 +248,9 @@ class QR(commands.Cog):
                     if update is False:
                         return
                     if shade == "background":
-                        embed_kwargs["color"] = discord.Colour.from_rgb(*update["back_color"])
+                        embed_kwargs["color"] = discord.Colour.from_rgb(
+                            *update["back_color"]
+                        )
                     qrc_kwargs.update(update)
 
             if result == 2:
@@ -248,28 +262,28 @@ class QR(commands.Cog):
                     qrc_kwargs.update(update)
 
         confirmation_message = await ctx.maybe_send_embed("Generating QR code...")
-        await ctx.typing()
-        await asyncio.sleep(1)
-        sender_kwargs = {}
+        async with ctx.typing():
+            await asyncio.sleep(1)
+            sender_kwargs = {}
 
-        try:
-            qrc = qrc.make_image(**qrc_kwargs)
-        except DataOverflowError:
-            sender_kwargs["content"] = "Failed to create a QR code for this text."
-        else:
-            buff = io.BytesIO()
-            qrc.save(buff, "png")
-            buff.seek(0)
-            if await ctx.embed_requested():
-                embed = discord.Embed(**embed_kwargs)
-                embed.set_image(url="attachment://qr.png")
-                embed.set_author(name="Generated QR code")
-                embed.add_field(name="Content", value=text)
-                sender_kwargs["embed"] = embed
-            sender_kwargs["file"] = discord.File(buff, filename="qr.png")
-        finally:
             try:
-                await confirmation_message.edit(**sender_kwargs)
-            except (discord.HTTPException, TypeError):
-                # TypeError raised because of nonjsonserializable discord.File object
-                await ctx.send(**sender_kwargs)
+                qrc = qrc.make_image(**qrc_kwargs)
+            except DataOverflowError:
+                sender_kwargs["content"] = "Failed to create a QR code for this text."
+            else:
+                buff = io.BytesIO()
+                qrc.save(buff, "png")
+                buff.seek(0)
+                if await ctx.embed_requested():
+                    embed = discord.Embed(**embed_kwargs)
+                    embed.set_image(url="attachment://qr.png")
+                    embed.set_author(name="Generated QR code")
+                    embed.add_field(name="Content", value=text)
+                    sender_kwargs["embed"] = embed
+                sender_kwargs["file"] = discord.File(buff, filename="qr.png")
+            finally:
+                try:
+                    await confirmation_message.edit(**sender_kwargs)
+                except (discord.HTTPException, TypeError):
+                    # TypeError raised because of nonjsonserializable discord.File object
+                    await ctx.send(**sender_kwargs)

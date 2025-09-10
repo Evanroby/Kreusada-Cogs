@@ -45,8 +45,8 @@ class Colour(commands.Cog):
         drawer = ImageDraw.Draw(img)
         font = ImageFont.load_default(size=100)
         drawer.text((10, 0), name, fill=constrast, font=font)
-        l, t, r, b = drawer.textbbox((10, 0), name, font=font)
-        cimg = img.crop([l - 10, t - 10, r + 10, b + 10])
+        left, top, right, bottom = drawer.textbbox((10, 0), name, font=font)
+        cimg = img.crop([left - 10, top - 10, right + 10, bottom + 10])
 
         buffer = io.BytesIO()
         cimg.save(buffer, "png")
@@ -61,17 +61,14 @@ class Colour(commands.Cog):
         """
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                f"https://www.thecolorapi.com/id?hex={str(colour)[1:]}",
-                ssl=False
+                f"https://www.thecolorapi.com/id?hex={str(colour)[1:]}", ssl=False
             ) as request:
                 data = await request.json()
         if data["name"]["exact_match_name"]:
             description = f"The provided colour is referred to as {bold(data['name']['value'])}.\n"
             description += "This is an *exact* name match."
         else:
-            description = (
-                f"The provided colour may be referred to as {bold(data['name']['value'])}.\n"
-            )
+            description = f"The provided colour may be referred to as {bold(data['name']['value'])}.\n"
             description += "This is not an *exact* name match, but is very similar to "
             description += (
                 inline(data["name"]["closest_named_hex"])

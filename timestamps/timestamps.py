@@ -1,11 +1,11 @@
 from datetime import datetime
+from typing import Optional
 
 import dateparser
 import discord
 from redbot.core import commands
 from redbot.core.bot import Red
 from redbot.core.commands import BadArgument, Cog, Context, Converter, FlagConverter
-from typing import Optional
 
 timestamp_formats = {
     "t": "Short Time",
@@ -14,7 +14,7 @@ timestamp_formats = {
     "D": "Long Date",
     "f": "Short Date and Time",
     "F": "Long Date and Time",
-    "R": "Relative Time"
+    "R": "Relative Time",
 }
 
 
@@ -24,12 +24,14 @@ def date_parse_logic(arg: str) -> datetime:
         raise BadArgument("Unrecognized date/time.")
     return parsed
 
+
 class DateConverter(Converter):
     """Date converter which uses dateparser.parse()."""
 
     async def convert(self, ctx: Context, arg: str) -> datetime:
         return date_parse_logic(arg)
-    
+
+
 class TimeStampFormatConverter(Converter):
     async def convert(self, ctx: Context, argument: str):
         if argument not in timestamp_formats:
@@ -40,9 +42,19 @@ class TimeStampFormatConverter(Converter):
 
 
 class TimeStampArgumentConverter(FlagConverter):
-    format: Optional[str] = commands.flag(name="format", default=None, converter=TimeStampFormatConverter, aliases=["f"])
-    content: Optional[str] = commands.flag(name="content", default=lambda c: date_parse_logic("now"), converter=DateConverter, aliases=["c"], positional=True)
-    raw: Optional[str] = commands.flag(name="raw", default=False, converter=bool, aliases=["r"])
+    format: Optional[str] = commands.flag(
+        name="format", default=None, converter=TimeStampFormatConverter, aliases=["f"]
+    )
+    content: Optional[str] = commands.flag(
+        name="content",
+        default=lambda c: date_parse_logic("now"),
+        converter=DateConverter,
+        aliases=["c"],
+        positional=True,
+    )
+    raw: Optional[str] = commands.flag(
+        name="raw", default=False, converter=bool, aliases=["r"]
+    )
 
     async def convert(self, ctx: commands.Context, argument: str):
         try:
@@ -59,7 +71,7 @@ class TimeStampArgumentConverter(FlagConverter):
             raise commands.UserFeedbackCheckFailure(
                 f"Too many values provided for the {e.flag.attribute!r} option."
             )
-        
+
     def to_dict(self):
         """debugging"""
         return {
@@ -67,6 +79,7 @@ class TimeStampArgumentConverter(FlagConverter):
             "content": self.content,
             "raw": self.raw,
         }
+
 
 class TimeStamps(Cog):
     """Retrieve timestamps for certain dates."""
@@ -129,7 +142,9 @@ class TimeStamps(Cog):
                 message += f"`<t:{ts}:{tac.format}>`: "
             message += f"<t:{ts}:{tac.format}>"
         if await ctx.embed_requested() and not tac.raw:
-            embed = discord.Embed(description=message, colour=(await ctx.embed_colour()))
+            embed = discord.Embed(
+                description=message, colour=(await ctx.embed_colour())
+            )
             await ctx.send(embed=embed)
         else:
             await ctx.send(message)

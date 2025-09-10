@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import logging
 import re
-import typing
 
 import discord
 from redbot.core import Config, commands
@@ -10,6 +9,7 @@ from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import humanize_list
 
 log = logging.getLogger("red.kreusada-cogs.gallery")
+
 
 class Gallery(commands.Cog):
     """
@@ -21,7 +21,9 @@ class Gallery(commands.Cog):
 
     def __init__(self, bot: Red):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=564154651321346431, force_registration=True)
+        self.config = Config.get_conf(
+            self, identifier=564154651321346431, force_registration=True
+        )
         self.config.register_guild(channels=[], whitelist=[], time=0)
 
     async def red_delete_data_for_user(self, **kwargs):
@@ -39,7 +41,9 @@ class Gallery(commands.Cog):
         """Various Gallery settings."""
 
     @galleryset.command(name="add", usage="<channels...>")
-    async def galleryset_add(self, ctx: commands.Context, *channels: discord.TextChannel):
+    async def galleryset_add(
+        self, ctx: commands.Context, *channels: discord.TextChannel
+    ):
         """Add channels to the list of Gallery channels."""
         if not channels:
             await ctx.send_help()
@@ -58,15 +62,21 @@ class Gallery(commands.Cog):
 
         response = []
         if added_channels:
-            response.append(f"{', '.join(added_channels)} added to the Gallery channels list.")
+            response.append(
+                f"{', '.join(added_channels)} added to the Gallery channels list."
+            )
         if already_in_list:
-            response.append(f"{', '.join(already_in_list)} already in the Gallery channels list.")
+            response.append(
+                f"{', '.join(already_in_list)} already in the Gallery channels list."
+            )
 
         if response:
             await ctx.send("\n".join(response))
 
     @galleryset.command(name="remove", usage="<channels...>")
-    async def galleryset_remove(self, ctx: commands.Context, *channels: discord.TextChannel):
+    async def galleryset_remove(
+        self, ctx: commands.Context, *channels: discord.TextChannel
+    ):
         """Remove channels from the list of Gallery channels."""
         if not channels:
             await ctx.send_help()
@@ -85,23 +95,27 @@ class Gallery(commands.Cog):
 
         response = []
         if removed_channels:
-            response.append(f"{', '.join(removed_channels)} removed from the Gallery channels list.")
+            response.append(
+                f"{', '.join(removed_channels)} removed from the Gallery channels list."
+            )
         if not_in_list:
-            response.append(f"{', '.join(not_in_list)} not in the Gallery channels list.")
+            response.append(
+                f"{', '.join(not_in_list)} not in the Gallery channels list."
+            )
 
         if response:
             await ctx.send("\n".join(response))
 
     @galleryset.command(name="role")
     async def galleryset_role(self, ctx: commands.Context, *roles: discord.Role):
-        """Add or remove whitelisted roles. 
+        """Add or remove whitelisted roles.
         Running the command twice with the same role removes it from the whitelist."""
         if not roles:
             # Clear the whitelist if no roles are provided
             await self.config.guild(ctx.guild).whitelist.clear()
             await ctx.send("All whitelisted roles have been deleted.")
             return
-        
+
         async with self.config.guild(ctx.guild).whitelist() as whitelisted_roles:
             added_roles = []
             removed_roles = []
@@ -126,20 +140,36 @@ class Gallery(commands.Cog):
         """Set how long (in seconds!!) the bot should wait before deleting non images.
         0 to reset (default time)"""
         await self.config.guild(ctx.guild).time.set(time)
-        await ctx.send(f"I will wait {time} seconds before deleting messages that are not images.")
+        await ctx.send(
+            f"I will wait {time} seconds before deleting messages that are not images."
+        )
 
     @galleryset.command(name="settings", aliases=["showsettings", "setting", "show"])
     async def galleryset_settings(self, ctx: commands.Context):
         """See current settings."""
         data = await self.config.guild(ctx.guild).all()
-        channels = [ctx.guild.get_channel(c_id).mention for c_id in data["channels"] if ctx.guild.get_channel(c_id)]
+        channels = [
+            ctx.guild.get_channel(c_id).mention
+            for c_id in data["channels"]
+            if ctx.guild.get_channel(c_id)
+        ]
         channels = "None" if not channels else humanize_list(channels)
-        
-        whitelist_roles = [ctx.guild.get_role(role_id).name for role_id in data["whitelist"] if ctx.guild.get_role(role_id)]
-        whitelist_roles = "None" if not whitelist_roles else humanize_list(whitelist_roles)
 
-        embed = discord.Embed(colour=await ctx.embed_colour(), timestamp=datetime.datetime.now())
-        embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+        whitelist_roles = [
+            ctx.guild.get_role(role_id).name
+            for role_id in data["whitelist"]
+            if ctx.guild.get_role(role_id)
+        ]
+        whitelist_roles = (
+            "None" if not whitelist_roles else humanize_list(whitelist_roles)
+        )
+
+        embed = discord.Embed(
+            colour=await ctx.embed_colour(), timestamp=datetime.datetime.now()
+        )
+        embed.set_author(
+            name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None
+        )
         embed.title = "**__Gallery Settings__**"
         embed.set_footer(text="*required to function properly")
 
@@ -171,7 +201,11 @@ class Gallery(commands.Cog):
                 parts = uri.split(".")
                 extension = parts[-1]
                 imageTypes = ["jpg", "jpeg", "tiff", "png", "gif", "webp", "bmp"]
-                if "tenor.com" in uri or "giphy.com" in uri or "cdn.discordapp.com" in uri:
+                if (
+                    "tenor.com" in uri
+                    or "giphy.com" in uri
+                    or "cdn.discordapp.com" in uri
+                ):
                     return
                 if extension in imageTypes:
                     return
@@ -190,4 +224,6 @@ class Gallery(commands.Cog):
             try:
                 await message.delete()
             except discord.Forbidden:
-                log.warning("Unable to delete message in Gallery channel %s", message.channel.id)
+                log.warning(
+                    "Unable to delete message in Gallery channel %s", message.channel.id
+                )

@@ -1,7 +1,6 @@
 import math
 from typing import Dict
 
-import discord
 from discord.ui import Button, View
 
 

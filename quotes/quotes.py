@@ -1,9 +1,6 @@
-import ssl
-
 import aiohttp
 from redbot.core import commands
 from redbot.core.bot import Red
-from redbot.core.utils.chat_formatting import bold, warning
 
 
 class Quotes(commands.Cog):
@@ -31,7 +28,7 @@ class Quotes(commands.Cog):
     @commands.command()
     async def quote(self, ctx: commands.Context):
         """Get a random quote."""
-        await ctx.typing()
-        async with self.session.get(self.api, ssl=False) as r:
-            content = (await r.json())[0]
-        await ctx.send(f"From **{content['a']}**\n{content['q']}")
+        async with ctx.typing():
+            async with self.session.get(self.api, ssl=False) as r:
+                content = (await r.json())[0]
+            await ctx.send(f"From **{content['a']}**\n{content['q']}")

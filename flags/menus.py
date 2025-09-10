@@ -1,18 +1,21 @@
 import unicodedata
-from typing import Any, Optional
+from typing import Optional
 
 import discord
-from discord.interactions import Interaction
 from redbot.core.commands import Context
 
 
 def alpha_2_to_unicode(alpha_2):
-    return "".join(unicodedata.lookup("REGIONAL INDICATOR SYMBOL LETTER " + a) for a in alpha_2)
+    return "".join(
+        unicodedata.lookup("REGIONAL INDICATOR SYMBOL LETTER " + a) for a in alpha_2
+    )
 
 
 class LabelledMenuSelect(discord.ui.Select):
     def __init__(self, neighbours: dict[str, str]):
-        options = [discord.SelectOption(label=k, emoji=v) for k, v in neighbours.items()]
+        options = [
+            discord.SelectOption(label=k, emoji=v) for k, v in neighbours.items()
+        ]
         super().__init__(placeholder="Neighbouring countries", options=options, row=1)
 
     async def callback(self, interaction: discord.Interaction):
@@ -52,7 +55,10 @@ class LabelledMenu(discord.ui.View):
         embed: Optional[discord.Embed] = None,
         emoji: Optional[str] = None,
     ):
-        self.options[label] = {"emoji": emoji, "kwargs": {"embed": embed, "content": content}}
+        self.options[label] = {
+            "emoji": emoji,
+            "kwargs": {"embed": embed, "content": content},
+        }
         self.__insertion_order.append(label)
         self.add_item(LabelledMenuButton(label=label, emoji=emoji, row=2))
 

@@ -4,12 +4,20 @@ import re
 import aiohttp
 import discord
 from redbot.core import commands
-from redbot.core.utils.chat_formatting import box, humanize_list, inline, italics, pagify
+from redbot.core.utils.chat_formatting import (
+    box,
+    humanize_list,
+    inline,
+    italics,
+    pagify,
+)
 
 from .utils import JumpUrlView
 
 URL_RE = re.compile(r"(https?|s?ftp)://(\S+)", re.I)
-GIT_REPO_RE = re.compile("https://github.com/([a-z0-9]+)/([a-z0-9]+)/?$", flags=re.IGNORECASE)
+GIT_REPO_RE = re.compile(
+    "https://github.com/([a-z0-9]+)/([a-z0-9]+)/?$", flags=re.IGNORECASE
+)
 PYTHON_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/2048px-Python-logo-notext.svg.png"
 
 
@@ -34,7 +42,10 @@ class PyPi(commands.Cog):
     @staticmethod
     def format_classifier_url(classifier: str, include_prefix: bool = False) -> str:
         split = classifier.split(" :: ")
-        replace = lambda x: x.replace(" ", "+")
+
+        def replace(x):
+            return x.replace(" ", "+")
+
         url = "+%3A%3A+".join(map(replace, split))
         if include_prefix:
             return "https://pypi.org/search/?c=" + url
@@ -64,20 +75,26 @@ class PyPi(commands.Cog):
     @commands.bot_has_permissions(embed_links=True)
     async def pypi(self, ctx, project: str):
         """Get information about a project on PyPi."""
-        await ctx.typing()
-        try:
-            request = await self.make_request(f"https://pypi.org/pypi/{project}/json")
-        except ValueError:
-            embed = discord.Embed(description=f'There were no results for "{project}".')
-            kwargs = self.get_send_kwargs(embed)
-            return await ctx.send(embed=embed)
+        async with ctx.typing():
+            try:
+                request = await self.make_request(
+                    f"https://pypi.org/pypi/{project}/json"
+                )
+            except ValueError:
+                embed = discord.Embed(
+                    description=f'There were no results for "{project}".'
+                )
+                kwargs = self.get_send_kwargs(embed)
+                return await ctx.send(embed=embed)
 
         info = request["info"]
         releases = request["releases"]
 
         kwargs = {}
 
-        embed = discord.Embed(title=f"{info['name']} {info['version']}", url=info["package_url"])
+        embed = discord.Embed(
+            title=f"{info['name']} {info['version']}", url=info["package_url"]
+        )
         embed.description = info["summary"] or italics(
             "No description was provided for this project."
         )
@@ -109,7 +126,9 @@ class PyPi(commands.Cog):
                 name += "s"
             embed.add_field(
                 name=name,
-                value="\n".join(f"- {inline(x.strip())}" for x in python_requires.split(",")),
+                value="\n".join(
+                    f"- {inline(x.strip())}" for x in python_requires.split(",")
+                ),
                 inline=False,
             )
 
@@ -126,7 +145,9 @@ class PyPi(commands.Cog):
         )
 
         embed.add_field(
-            name="Installation", value=box(f"pip install -U {info['name']}"), inline=False
+            name="Installation",
+            value=box(f"pip install -U {info['name']}"),
+            inline=False,
         )
 
         project_urls = info["project_urls"]
@@ -167,12 +188,16 @@ class PyPi(commands.Cog):
             if not (r := releases[release]):
                 continue
             release_time = r[-1]["upload_time"][:10]
-            release_time = "-".join(reversed(release_time.split("-")))  # format date properly
+            release_time = "-".join(
+                reversed(release_time.split("-"))
+            )  # format date properly
             values.append(f"+ {release} (~{release_time})")
 
         if values:
             embed.add_field(
-                name="Recent Releases", value=box("\n".join(values), lang="diff"), inline=False
+                name="Recent Releases",
+                value=box("\n".join(values), lang="diff"),
+                inline=False,
             )
 
         if requires_dist := info["requires_dist"]:
@@ -201,7 +226,9 @@ class PyPi(commands.Cog):
                     title = "Classifiers"
                     if _:  # Non-zero ints == True
                         title += " (continued)"
-                    embed.add_field(name=title, value=box(page, lang="asciidoc"), inline=False)
+                    embed.add_field(
+                        name=title, value=box(page, lang="asciidoc"), inline=False
+                    )
 
         kwargs["view"] = JumpUrlView(info["package_url"], project_urls=filtered_links)
         proper_kwargs = self.get_send_kwargs(embed, **kwargs)
