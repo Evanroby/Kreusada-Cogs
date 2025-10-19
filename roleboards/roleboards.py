@@ -1,3 +1,5 @@
+from typing import Any, NoReturn
+
 from redbot.core import commands
 from redbot.core.bot import Red
 from redbot.core.utils.views import SimpleMenu
@@ -29,8 +31,9 @@ class RoleBoards(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     @commands.group(aliases=["roleboards", "rb"])
     @commands.guild_only()
@@ -47,11 +50,13 @@ class RoleBoards(commands.Cog):
 
         -   ``<index>``: The number of members to get the data for.
         """
-        data = get_members(ctx.guild, index=index)
+        if ctx.guild is None:
+            return
+        data = get_members(ctx.guild, index=int(index))  # type: ignore[arg-type]
         pages = format_embed_pages(
             ctx, data=data, data_type="members", embed_colour=await ctx.embed_colour()
         )
-        menu = SimpleMenu(pages, use_select_menu=True)
+        menu = SimpleMenu(pages, use_select_menu=True)  # type: ignore[arg-type]
         await menu.start(ctx)
 
     @roleboard.command()
@@ -63,9 +68,11 @@ class RoleBoards(commands.Cog):
 
         -   ``<index>``: The number of roles to get the data for.
         """
-        data = get_roles(ctx.guild, index=index)
+        if ctx.guild is None:
+            return
+        data = get_roles(ctx.guild, index=int(index))  # type: ignore[arg-type]
         pages = format_embed_pages(
             ctx, data=data, data_type="roles", embed_colour=await ctx.embed_colour()
         )
-        menu = SimpleMenu(pages, use_select_menu=True)
+        menu = SimpleMenu(pages, use_select_menu=True)  # type: ignore[arg-type]
         await menu.start(ctx)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, NoReturn
+
 import aiohttp
 import discord
 from redbot.core import Config, commands
@@ -30,9 +32,7 @@ class CocktailFavouriteButton(discord.ui.Button):
             self.style = discord.ButtonStyle.green
             self.label = "Favourite"
             message = "Cocktail removed from favourites."
-            async with self.cog.config.user(
-                interaction.user
-            ).favourites() as favourites:
+            async with self.cog.config.user(interaction.user).favourites() as favourites:
                 favourites.remove(self.cocktail)
             embed = self.view.message.embeds[0]
             embed.remove_author()
@@ -40,14 +40,10 @@ class CocktailFavouriteButton(discord.ui.Button):
             self.style = discord.ButtonStyle.red
             self.label = "Unfavourite"
             message = "Cocktail added to favourites."
-            async with self.cog.config.user(
-                interaction.user
-            ).favourites() as favourites:
+            async with self.cog.config.user(interaction.user).favourites() as favourites:
                 favourites.append(self.cocktail)
             embed = self.view.message.embeds[0]
-            embed.set_author(
-                name="This cocktail is in your favourites!", icon_url=FAVOURITE_ICON
-            )
+            embed.set_author(name="This cocktail is in your favourites!", icon_url=FAVOURITE_ICON)
         self.favourite = not self.favourite
         await interaction.response.send_message(message, ephemeral=True)
         await self.view.message.edit(view=self.view, embed=embed)
@@ -61,16 +57,16 @@ class CocktailView(discord.ui.View):
     def __init__(self, *, cog: Cocktail, cocktail: str, favourite: bool):
         super().__init__()
         self.message: discord.Message
-        self.add_item(
-            CocktailFavouriteButton(cog=cog, cocktail=cocktail, favourite=favourite)
-        )
+        self.add_item(CocktailFavouriteButton(cog=cog, cocktail=cocktail, favourite=favourite))
 
-    async def interaction_check(self, interaction: discord.Interaction):
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.message.author.id:
             await interaction.response.send_message(
                 "Invoke the command yourself to add it to your favourites.",
                 ephemeral=True,
             )
+            return False
+        return True
 
 
 class Cocktail(commands.Cog):
@@ -88,8 +84,9 @@ class Cocktail(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Delete user data for GDPR compliance."""
+        raise NotImplementedError
 
     @commands.group(invoke_without_command=True)
     async def cocktail(self, ctx: commands.Context, *, name: str):
@@ -143,9 +140,7 @@ class Cocktail(commands.Cog):
             else:
                 string = f"{ingredient} ({measure.rstrip()})"
             ingredients.append(string)
-        embed.add_field(
-            name="Ingredients", value="\n".join(f"- {x}" for x in ingredients)
-        )
+        embed.add_field(name="Ingredients", value="\n".join(f"- {x}" for x in ingredients))
 
         view = CocktailView(cog=self, cocktail=drink["strDrink"], favourite=favourite)
         view.message = await ctx.send(embed=embed, view=view)

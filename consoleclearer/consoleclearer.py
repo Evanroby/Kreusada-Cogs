@@ -1,5 +1,6 @@
 import datetime
 import os
+from typing import Any, NoReturn
 
 from redbot.core import commands
 from redbot.core.bot import Red
@@ -18,8 +19,9 @@ class ConsoleClearer(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """This cog does not store user data."""
+        raise NotImplementedError
 
     @commands.is_owner()
     @commands.command(aliases=["cleanconsole", "consoleclear", "consoleclean"])
@@ -29,6 +31,6 @@ class ConsoleClearer(commands.Cog):
         """
         os.system("clear" if os.name == "posix" else "cls")
         print(
-            f"Red console cleared | {datetime.datetime.utcnow().strftime('%b %d %Y %H:%M:%S')} (UTC)"
+            f"Red console cleared | {datetime.datetime.now(datetime.timezone.utc).strftime('%b %d %Y %H:%M:%S')} (UTC)"
         )
         await ctx.send("Red console cleared.")

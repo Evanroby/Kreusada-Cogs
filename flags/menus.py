@@ -5,20 +5,20 @@ import discord
 from redbot.core.commands import Context
 
 
-def alpha_2_to_unicode(alpha_2):
+def alpha_2_to_unicode(alpha_2: str) -> str:
+    """Convert an alpha-2 country code to Unicode flag emoji."""
     return "".join(
-        unicodedata.lookup("REGIONAL INDICATOR SYMBOL LETTER " + a) for a in alpha_2
+        unicodedata.lookup("REGIONAL INDICATOR SYMBOL LETTER " + a.upper()) for a in alpha_2
     )
 
 
 class LabelledMenuSelect(discord.ui.Select):
     def __init__(self, neighbours: dict[str, str]):
-        options = [
-            discord.SelectOption(label=k, emoji=v) for k, v in neighbours.items()
-        ]
+        options = [discord.SelectOption(label=k, emoji=v) for k, v in neighbours.items()]
         super().__init__(placeholder="Neighbouring countries", options=options, row=1)
 
     async def callback(self, interaction: discord.Interaction):
+        assert self.view is not None
         await interaction.response.send_message(
             f"Get information about {self.values[0]} with the command `{self.view.context.clean_prefix}flag {self.values[0]}`!",
             ephemeral=True,
@@ -27,6 +27,7 @@ class LabelledMenuSelect(discord.ui.Select):
 
 class LabelledMenuButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
+        assert self.view is not None
         self.grey_all_buttons()
         self.style = discord.ButtonStyle.green
         await interaction.response.edit_message(
@@ -34,17 +35,20 @@ class LabelledMenuButton(discord.ui.Button):
         )
 
     def grey_all_buttons(self):
+        assert self.view is not None
         for button in self.view.children:
-            button.style = discord.ButtonStyle.grey
+            if isinstance(button, LabelledMenuButton):
+                button.style = discord.ButtonStyle.grey
 
 
 class LabelledMenu(discord.ui.View):
     def __init__(self):
         super().__init__()
         self.context: Optional[Context] = None
-        self.options: dict[str, discord.Embed] = {}
+        self.options: dict[str, dict] = {}
         self.select: Optional[discord.ui.Select] = None
         self.__insertion_order: list[str] = []
+        self.message: Optional[discord.Message] = None
 
     def add_option(
         self,
@@ -69,17 +73,23 @@ class LabelledMenu(discord.ui.View):
 
     async def start(self, ctx: Context):
         self.context = ctx
-        self.children[0].style = discord.ButtonStyle.green
+        first_child = self.children[0]
+        if isinstance(first_child, LabelledMenuButton):
+            first_child.style = discord.ButtonStyle.green
         self.message = await ctx.send(
             **self.options[self.__insertion_order[0]]["kwargs"], view=self
         )
 
     async def on_timeout(self):
         for child in self.children:
-            child.disabled = True
-        await self.message.edit(view=self)
+            if isinstance(child, (discord.ui.Button, discord.ui.Select)):
+                child.disabled = True
+        if self.message:
+            await self.message.edit(view=self)
 
     async def interaction_check(self, interaction: discord.Interaction):
+        if self.context is None:
+            return False
         if interaction.user.id != self.context.author.id:
             await interaction.response.send_message(
                 "You are not allowed to interact with this.", ephemeral=True

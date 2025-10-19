@@ -1,4 +1,5 @@
 import random
+from typing import Any, NoReturn
 
 from redbot.core import commands
 from redbot.core.bot import Red
@@ -164,8 +165,9 @@ class TongueTwisters(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     @commands.command()
     async def tonguetwister(self, ctx: commands.Context):

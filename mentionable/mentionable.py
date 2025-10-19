@@ -1,3 +1,5 @@
+from typing import Any, NoReturn
+
 import discord
 from redbot.core import commands
 from redbot.core.bot import Red
@@ -14,18 +16,18 @@ class Mentionable(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
 
-    async def red_delete_data_for_user(self, *, requester, user_id):
-        # nothing to delete
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     def format_help_for_context(self, ctx: commands.Context) -> str:
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nVersion: {self.__version__}\nAuthors: {self.__author__}"
 
     @commands.admin()
-    @commands.command()
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
+    @commands.command()
     async def mention(self, ctx: commands.Context, *, role: discord.Role):
         """Makes that role mentionable"""
         if not role.mentionable:
@@ -35,9 +37,9 @@ class Mentionable(commands.Cog):
             await ctx.send(f"{role} is already mentionable.")
 
     @commands.admin()
-    @commands.command()
     @commands.guild_only()
     @commands.bot_has_permissions(manage_roles=True)
+    @commands.command()
     async def unmention(self, ctx: commands.Context, *, role: discord.Role):
         """
         Makes that role unmentionable

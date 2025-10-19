@@ -1,4 +1,5 @@
 import operator
+from typing import Any, NoReturn
 
 import discord
 import rapidfuzz
@@ -22,14 +23,15 @@ class DidYouMean(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
         """Nothing to delete."""
-        return
+        raise NotImplementedError
 
-    @commands.group()
     @commands.is_owner()
+    @commands.group()
     async def dymset(self, ctx: commands.Context):
         """Configure DidYouMean."""
+        pass
 
     @dymset.command(name="threshold")
     async def dymset_threshold(
@@ -41,8 +43,11 @@ class DidYouMean(commands.Cog):
         await ctx.send("Threshold set.")
 
     @commands.Cog.listener()
-    async def on_command_error(self, ctx: commands.Context, error):
+    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):
         if isinstance(error, commands.CommandNotFound):
+            if not ctx.invoked_with:
+                return
+
             best_match = None
             highest_ratio = 0
 
@@ -54,12 +59,12 @@ class DidYouMean(commands.Cog):
 
             if best_match and highest_ratio >= await self.config.threshold():
                 view = ConfirmView(ctx.author, timeout=30)
-                to_execute = ctx.message.content.lstrip(ctx.prefix).replace(
+                execute = ctx.message.content.lstrip(ctx.prefix).replace(
                     ctx.invoked_with, best_match, 1
                 )
                 message = f"Could not find a top-level command named `{ctx.invoked_with}`. Perhaps you meant `{best_match}`?"
-                if to_execute != best_match:
-                    message += f"\nConfirming will execute `{(execute := ctx.message.content.lstrip(ctx.prefix).replace(ctx.invoked_with, best_match, 1))}`."
+                if execute != best_match:
+                    message += f"\nConfirming will execute `{execute}`."
                 view.message = await ctx.send(message, view=view, delete_after=30)
                 await view.wait()
                 if view.result:

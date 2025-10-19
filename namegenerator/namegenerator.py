@@ -1,5 +1,6 @@
 import contextlib
 import random
+from typing import Any, NoReturn
 
 import discord
 import mimesis  # type: ignore
@@ -67,7 +68,8 @@ def generate_name(interaction: discord.Interaction, view: "LocaleView"):
     language = view.language
     data = LANGUAGES[language]
     person = mimesis.Person(language)
-    text = f"{data['emoji']} {person.full_name(gender=view.gender or (rc := random.choice([Gender.MALE, Gender.FEMALE])))}"
+    rc = view.gender or random.choice([Gender.MALE, Gender.FEMALE])
+    text = f"{data['emoji']} {person.full_name(gender=rc)}"
     if not view.gender:
         text += f" ({rc.name.lower()})"
     view.language = language
@@ -87,29 +89,29 @@ class LocaleView(discord.ui.View):
 
         self.gender: Gender | None = None
         self.colour: discord.Colour = COLOURS[None]
-        self.language: str | None = None
+        self.language: str = "en"
         self.text: str | None = None
 
     async def on_timeout(self):
         for child in self.children:
-            child.disabled = True
+            child.disabled = True  # type: ignore
         with contextlib.suppress(discord.NotFound):
             await self.message.edit(view=self)
 
-    async def interaction_check(self, interaction: discord.Interaction):
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.ctx.author.id:
             await interaction.response.send_message(
                 "You are not allowed to interact with this.", ephemeral=True
             )
-        else:
-            return True
+            return False
+        return True
 
     async def edit_message(self, interaction: discord.Interaction):
         embed = discord.Embed(
             description="# " + (self.text or "Please select a language"),
             colour=self.colour,
         ).set_footer(
-            text=f"Gender: {self.gender.name.capitalize() if self.gender else 'Either'}\nLanguage: {LANGUAGES[self.language]['name'] if self.language else None}"
+            text=f"Gender: {self.gender.name.capitalize() if self.gender else 'Either'}\nLanguage: {LANGUAGES[self.language]['name']}"
         )
         await interaction.response.edit_message(view=self, embed=embed)
 
@@ -151,7 +153,7 @@ class LocaleSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         self.view.language = self.values[0]
-        self.view.children[0].disabled = False
+        self.view.children[0].disabled = False  # type: ignore
         await self.view.edit_message(interaction=generate_name(interaction, self.view))
 
 
@@ -187,8 +189,9 @@ class NameGenerator(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     @commands.command(aliases=["generatename", "namegenerate", "genname"])
     async def namegen(self, ctx: commands.Context):

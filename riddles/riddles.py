@@ -1,4 +1,5 @@
 import random
+from typing import Any, NoReturn
 
 import discord
 from redbot.core import commands
@@ -240,14 +241,12 @@ class ViewAnswer(discord.ui.View):
         super().__init__(timeout=300)
         self.answer = answer
 
-    @discord.ui.button(
-        emoji="\N{BRAIN}", label="View Answer", style=discord.ButtonStyle.secondary
-    )
+    @discord.ui.button(emoji="\N{BRAIN}", label="View Answer", style=discord.ButtonStyle.secondary)
     async def _view_answer(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
+        self, interaction: discord.Interaction, button: discord.ui.Button["ViewAnswer"]
+    ) -> None:
         if interaction.response.is_done():
-            await interaction.followup.send(f"{self.answer}", ephemeral=True)
+            await interaction.followup.send(self.answer, ephemeral=True)
         else:
             await interaction.response.send_message(f"{self.answer}", ephemeral=True)
 
@@ -262,9 +261,9 @@ class Riddles(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthors: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
         """Nothing to delete."""
-        return
+        raise NotImplementedError
 
     @commands.command()
     async def riddle(self, ctx: commands.Context):

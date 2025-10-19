@@ -1,4 +1,5 @@
 import unicodedata
+from typing import Any, Dict, NoReturn
 
 import rapidfuzz
 from redbot.core import commands
@@ -16,12 +17,13 @@ class UnicodeLookup(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     @staticmethod
-    def fuzzy_lookup(term: str, *, strength: int):
-        ret = {}
+    def fuzzy_lookup(term: str, *, strength: int) -> Dict[str, str]:
+        ret: Dict[str, str] = {}
 
         # Loop through all Unicode characters
         for codepoint in range(0x110000):
@@ -41,7 +43,7 @@ class UnicodeLookup(commands.Cog):
             paged = list(pagify(message, page_length=500))
             for i in range(1, len(paged) + 1):
                 paged[i - 1] += f"\n\n**(Page {i}/{len(paged)})**"
-            menu = SimpleMenu(paged, use_select_menu=True)
+            menu = SimpleMenu(paged, use_select_menu=True)  # type: ignore[arg-type]
             await menu.start(ctx)
         else:
             await ctx.send(message)
@@ -54,9 +56,7 @@ class UnicodeLookup(commands.Cog):
     async def name(self, ctx: commands.Context, *, characters: str):
         """Get the unicode names of characters."""
         if len(characters) == 1:
-            return await ctx.send(
-                f"{inline(characters[0])} - {unicodedata.name(characters[0])}"
-            )
+            return await ctx.send(f"{inline(characters[0])} - {unicodedata.name(characters[0])}")
         message = "\n".join(
             f"- {inline(c)} - {unicodedata.name(c)}" for c in dict.fromkeys(characters)
         )
@@ -87,7 +87,5 @@ class UnicodeLookup(commands.Cog):
         search = self.fuzzy_lookup(term, strength=strength)
         if not search:
             return await ctx.send("No fuzzy terms found.")
-        message = "\n".join(
-            f"- {inline(char)} - {inline(name)}" for char, name in search.items()
-        )
+        message = "\n".join(f"- {inline(char)} - {inline(name)}" for char, name in search.items())
         await self.maybe_send_menu(ctx, message=message)

@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Any, Literal, NoReturn
 
 import discord
 from redbot.core import Config, commands
@@ -28,9 +28,9 @@ class MessageDeleter(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
         """Nothing to delete."""
-        return
+        raise NotImplementedError
 
     async def enable_for(
         self,
@@ -49,9 +49,7 @@ class MessageDeleter(commands.Cog):
             return False
         return True
 
-    async def disable_for(
-        self, *, type: Literal["bots", "humans"], channel: discord.TextChannel
-    ):
+    async def disable_for(self, *, type: Literal["bots", "humans"], channel: discord.TextChannel):
         cid = str(channel.id)
         channels = await self.config.guild(channel.guild).channels()
         if cid in channels:
@@ -69,21 +67,26 @@ class MessageDeleter(commands.Cog):
             message += ENABLE_CONFIRMATION_WITH_PERMS
         return message
 
-    @commands.group()
     @commands.guild_only()
     @commands.mod_or_permissions(manage_messages=True)
+    @commands.group()
     async def msgdeleter(self, ctx: commands.Context):
         """Commands to configure MessageDeleter."""
 
     @msgdeleter.command(name="settings")
     async def msgdeleter_settings(self, ctx: commands.Context):
         """Shows the current settings for MessageDeleter in this guild."""
+        if ctx.guild is None:
+            return
         channels = await self.config.guild(ctx.guild).channels()
         message = "## Settings for MessageDeleter in this guild\n"
         has_settings = False
         for cid, settings in channels.items():
             has_settings = True
-            line = f"- {ctx.guild.get_channel(int(cid)).mention} -"
+            channel = ctx.guild.get_channel(int(cid))
+            if channel is None:
+                continue
+            line = f"- {channel.mention} -"
             bot_settings = settings["bots"]
             if bot_settings is not False:
                 if bot_settings == 0:
@@ -95,13 +98,17 @@ class MessageDeleter(commands.Cog):
                 if human_settings == 0:
                     line += " Messages sent by humans are **instantly** deleted."
                 else:
-                    line += f" Messages sent by humans are deleted after **{human_settings}** seconds."
+                    line += (
+                        f" Messages sent by humans are deleted after **{human_settings}** seconds."
+                    )
             message += line + "\n"
         await ctx.send(message if has_settings else "No settings to show.")
 
     @msgdeleter.command(name="reset")
     async def msgdeleter_reset(self, ctx: commands.Context):
         """Reset MessageDeleter in this guild."""
+        if ctx.guild is None:
+            return
         await self.config.guild(ctx.guild).channels.clear()
         await ctx.send("MessageDeleter successfully reset.")
 
@@ -114,12 +121,10 @@ class MessageDeleter(commands.Cog):
         self,
         ctx: commands.Context,
         channel: discord.TextChannel,
-        delay: Optional[commands.Range[int, None, 10]] = 0,
+        delay: commands.Range[int, 0, 10] = 0,
     ):
         """Enable deletion of bot messages in a text channel."""
-        can_delete_messages = await self.enable_for(
-            type="bots", channel=channel, delay=delay
-        )
+        can_delete_messages = await self.enable_for(type="bots", channel=channel, delay=delay)
         await ctx.send(
             self.get_confirmation_message(can_delete_messages).format(
                 type="bot",
@@ -129,16 +134,12 @@ class MessageDeleter(commands.Cog):
         )
 
     @msgdeleter_bots.command(name="disable")
-    async def msgdeleter_bots_disable(
-        self, ctx: commands.Context, channel: discord.TextChannel
-    ):
+    async def msgdeleter_bots_disable(self, ctx: commands.Context, channel: discord.TextChannel):
         """Disable deletion of bot messages in a text channel."""
         await self.disable_for(type="bots", channel=channel)
         await ctx.send(DISABLE_CONFIRMATION_MESSAGE.format(type="bot", channel=channel))
 
-    @msgdeleter.group(
-        name="humans", aliases=["human", "users", "user", "members", "member"]
-    )
+    @msgdeleter.group(name="humans", aliases=["human", "users", "user", "members", "member"])
     async def msgdeleter_humans(self, ctx: commands.Context):
         """Enable or disable deletion of human messages."""
 
@@ -147,12 +148,10 @@ class MessageDeleter(commands.Cog):
         self,
         ctx: commands.Context,
         channel: discord.TextChannel,
-        delay: Optional[commands.Range[int, None, 10]] = 0,
+        delay: commands.Range[int, 0, 10] = 0,
     ):
         """Enable deletion of human messages in a text channel."""
-        can_delete_messages = await self.enable_for(
-            type="humans", channel=channel, delay=delay
-        )
+        can_delete_messages = await self.enable_for(type="humans", channel=channel, delay=delay)
         await ctx.send(
             self.get_confirmation_message(can_delete_messages).format(
                 type="human",
@@ -162,14 +161,10 @@ class MessageDeleter(commands.Cog):
         )
 
     @msgdeleter_humans.command(name="disable")
-    async def msgdeleter_humans_disable(
-        self, ctx: commands.Context, channel: discord.TextChannel
-    ):
+    async def msgdeleter_humans_disable(self, ctx: commands.Context, channel: discord.TextChannel):
         """Disable deletion of human messages in a text channel."""
         await self.disable_for(type="humans", channel=channel)
-        await ctx.send(
-            DISABLE_CONFIRMATION_MESSAGE.format(type="human", channel=channel)
-        )
+        await ctx.send(DISABLE_CONFIRMATION_MESSAGE.format(type="human", channel=channel))
 
     @commands.Cog.listener("on_message")
     async def message_deleter_listener(self, message: discord.Message):

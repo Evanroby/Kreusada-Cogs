@@ -1,4 +1,4 @@
-from typing import List, Literal, Tuple
+from typing import Any, Generator, List, Literal, Sequence, Tuple
 
 import discord
 from redbot.core.commands import BadArgument, Context, Converter
@@ -6,45 +6,57 @@ from redbot.core.utils.chat_formatting import box
 
 
 class ValidRoleIndex(Converter):
-    async def convert(self, ctx: Context, argument):
+    async def convert(self, ctx: Context, argument: Any) -> int:  # type: ignore[override]
+        if ctx.guild is None:
+            raise BadArgument("This command must be used in a guild.")
+
         try:
-            argument = int(argument)
+            argument_int = int(argument)
         except ValueError:
             raise BadArgument("Please provide an integer.")
-        if argument > (len(ctx.guild.roles) - 1):
+
+        if argument_int > (len(ctx.guild.roles) - 1):
             raise BadArgument(
                 "Please provide an index lower than the number of roles in this guild."
             )
-        return argument
+        return argument_int
 
 
 class ValidUserIndex(Converter):
-    async def convert(self, ctx: Context, argument):
+    async def convert(self, ctx: Context, argument: Any) -> int:  # type: ignore[override]
+        if ctx.guild is None:
+            raise BadArgument("This command must be used in a guild.")
+
         try:
-            argument = int(argument)
+            argument_int = int(argument)
         except ValueError:
             raise BadArgument("Please provide an integer.")
-        if argument > len(ctx.guild.members):
+
+        if argument_int > len(ctx.guild.members):
             raise BadArgument(
                 "Please provide an index lower than the number of users in this guild."
             )
-        return argument
+        return argument_int
 
 
 def format_embed_pages(
     ctx: Context,
     *,
-    data: List[Tuple[str, int]],
+    data: List[List[Tuple[str, int]]],
     data_type: Literal["roles", "members"],
     embed_colour: discord.Colour,
-):
+) -> Sequence[discord.Embed]:
     pages = []
     enum = 1
 
-    def two_digits(x):
-        return f"0{x}" if len(str(x)) == 1 else x
+    def two_digits(x: int) -> str:
+        return f"0{x}" if len(str(x)) == 1 else str(x)
 
     reverse_types = {"roles": "members", "members": "roles"}
+
+    if ctx.guild is None:
+        return pages
+
     total_data = len(getattr(ctx.guild, data_type))
 
     if data_type == "roles":
@@ -52,8 +64,7 @@ def format_embed_pages(
 
     for sector in data:
         description = "\n".join(
-            f"#{two_digits(c)} [{two_digits(v[1])}] {v[0]}"
-            for c, v in enumerate(sector, enum)
+            f"#{two_digits(c)} [{two_digits(v[1])}] {v[0]}" for c, v in enumerate(sector, enum)
         )
         embed = discord.Embed(
             title=f"{data_type.capitalize()} with the most {reverse_types[data_type]}",
@@ -74,13 +85,15 @@ def format_embed_pages(
     return pages
 
 
-def yield_chunks(items, n):
+def yield_chunks(
+    items: List[Tuple[str, int]], n: int
+) -> Generator[List[Tuple[str, int]], None, None]:
     for i in range(0, len(items), n):
         yield items[i : i + n]
 
 
-def get_roles(guild: discord.Guild, *, index: int):
-    def key(x):
+def get_roles(guild: discord.Guild, *, index: int) -> List[List[Tuple[str, int]]]:
+    def key(x: discord.Role) -> int:
         return len(x.members)
 
     roles = [r for r in guild.roles if r.id != guild.id]  # exclude @everyone
@@ -89,8 +102,8 @@ def get_roles(guild: discord.Guild, *, index: int):
     return list(yield_chunks(data, 10))
 
 
-def get_members(guild: discord.Guild, *, index: int):
-    def key(x):
+def get_members(guild: discord.Guild, *, index: int) -> List[List[Tuple[str, int]]]:
+    def key(x: discord.Member) -> int:
         return len(x.roles)
 
     top_members = sorted([x for x in guild.members], key=key, reverse=True)

@@ -1,6 +1,7 @@
 import inspect
 import os
 import pathlib
+from typing import Any, NoReturn
 
 from redbot.core import commands, data_manager
 from redbot.core.bot import Red
@@ -22,8 +23,9 @@ class CogPaths(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """This cog does not store user data."""
+        raise NotImplementedError
 
     @commands.is_owner()
     @commands.command(aliases=["cogpaths"])
@@ -31,6 +33,7 @@ class CogPaths(commands.Cog):
         """Get the paths for a cog."""
         cog_path = pathlib.Path(inspect.getfile(cog.__class__)).parent.resolve()
         cog_data_path = pathlib.Path(data_manager.cog_data_path() / cog.qualified_name).resolve()
+        reason = None
         if not os.path.exists(cog_data_path):
             cog_data_path = None
             if not isinstance(getattr(cog, "config", None), Config):

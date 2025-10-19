@@ -1,10 +1,14 @@
+from typing import Any, Generator, NoReturn, TypeVar
+
 import aiohttp
 import discord
 from redbot.core import Config, commands
 from redbot.core.bot import Red
 
+T = TypeVar("T")
 
-def chunks(lst, n):
+
+def chunks(lst: list[T], n: int) -> Generator[list[T], None, None]:
     for i in range(0, len(lst), n):
         yield lst[i : i + n]
 
@@ -25,14 +29,15 @@ class Rhymes(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def cog_unload(self):
+    async def cog_unload(self) -> None:
         await self.session.close()
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
-    @commands.command()
     @commands.has_permissions(embed_links=True)
+    @commands.command()
     async def rhymes(self, ctx: commands.Context, word: str):
         """Get rhymes for a word."""
         async with ctx.typing():

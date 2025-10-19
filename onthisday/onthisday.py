@@ -3,7 +3,7 @@
 import datetime
 import re
 from random import choice
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Generator, List, NoReturn, Optional, TypeVar, Union
 
 import aiohttp
 import dateparser
@@ -37,18 +37,18 @@ MONTH_MAPPING = {
 }
 
 
-def highlight_numerical_data(string):
+def highlight_numerical_data(string: str) -> str:
     return re.sub(r"(([\d{1}],?)+)", r"**\1**", string)
 
 
-def retrieve_above_0(year):
+def retrieve_above_0(year: str) -> bool:
     return year.strip().isdigit()
 
 
-def columns(years):
-    m = f"{chr(12644)}\n"  # padding
+def columns(years: list[str]) -> str:
+    m = f"{chr(12644)}\n"
 
-    def f(s):
+    def f(s: str) -> str:
         return inline(s.zfill(4))
 
     for x in range(6, len(years), 6):
@@ -56,7 +56,7 @@ def columns(years):
     return m
 
 
-def date_suffix(number) -> str:
+def date_suffix(number: Union[str, int]) -> str:
     number = int(number)
     suffixes = {0: "th", 1: "st", 2: "nd", 3: "rd"}
     for i in range(4, 10):
@@ -72,16 +72,19 @@ def current_year() -> int:
     return datetime.date.today().year
 
 
-def yield_chunks(lst, n):
+T = TypeVar("T")
+
+
+def yield_chunks(lst: List[T], n: int) -> Generator[List[T], None, None]:
     for i in range(0, len(lst), n):
         yield lst[i : i + n]
 
 
-class DateConverter(Converter):
+class DateConverter(Converter[datetime.datetime]):
     """Date converter which uses dateparser.parse()."""
 
-    async def convert(self, ctx: Context, arg: str) -> datetime.datetime:
-        parsed = dateparser.parse(arg)
+    async def convert(self, ctx: Context, argument: str) -> datetime.datetime:  # type: ignore[override]
+        parsed = dateparser.parse(argument)
         if parsed is None:
             raise BadArgument("Unrecognized date/time.")
         if parsed.strftime("%Y") != str(now().strftime("%Y")):
@@ -93,6 +96,7 @@ class YearDropdown(discord.ui.Select):
     def __init__(self, otd: "OnThisDay", /):
         self.otd = otd
         cy = current_year()
+        year_range = self.otd.year_range or range(0)
         options = [
             discord.SelectOption(
                 label=year,
@@ -100,7 +104,7 @@ class YearDropdown(discord.ui.Select):
                 emoji="\N{CLOCK FACE THREE OCLOCK}",
             )
             for year in self.otd.year_data
-            if int(year) in self.otd.year_range
+            if int(year) in year_range
         ]
 
         super().__init__(placeholder="Choose a year...", options=options)
@@ -145,7 +149,7 @@ class YearRangeDropdown(discord.ui.Select):
         options = [
             discord.SelectOption(
                 label=self.YEAR_RANGES_HUMANIZED[i],
-                value=i,
+                value=str(i),
                 description=f"Get choice from {self.YEAR_RANGES_HUMANIZED[i].replace('-', 'to')}",
                 emoji=emojis[i],
             )
@@ -184,20 +188,20 @@ class OnThisDay(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.session = aiohttp.ClientSession()
-        self.date_number: Optional[str] = None
-        self.month_number: Optional[str] = None
-        self.year: Optional[str] = None
-        self.year_data = {}
+        self.date_number: str = "1"
+        self.month_number: str = "1"
+        self.year: str = str(current_year())
+        self.year_data: Dict[str, Dict[str, Any]] = {}
         self.year_range: Optional[range] = None
-        self.date_wiki: Optional[str] = None
+        self.date_wiki: str = ""
 
     def format_help_for_context(self, ctx: commands.Context) -> str:
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        """Nothing to delete"""
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     async def cog_unload(self) -> None:
         await self.session.close()
@@ -215,10 +219,15 @@ class OnThisDay(commands.Cog):
             + "\n\n"
             + f"This event occured on the __{date_suffix(self.date_number)} of {MONTH_MAPPING[self.month_number].capitalize()}, {year}__."
         )
+        channel = ctx.channel if isinstance(ctx, commands.Context) else ctx.channel
+        if channel is None:
+            color = discord.Colour.default()
+        else:
+            color = await self.bot.get_embed_colour(channel)  # type: ignore[arg-type]
         embed = discord.Embed(
             title=f"On this day, {years_ago} years ago...",
             description=highlight_numerical_data(content),
-            color=await self.bot.get_embed_colour(ctx.channel),
+            color=color,
         )
         embed.set_footer(text="See the below links for related wikipedia articles")
         _d = {
@@ -250,9 +259,7 @@ class OnThisDay(commands.Cog):
             ) as session:
                 if session.status != 200:
                     return await ctx.maybe_send_embed(
-                        warning(
-                            "An error occured whilst retrieving information for this day."
-                        )
+                        warning("An error occured whilst retrieving information for this day.")
                     )
                 content = await session.json()
         except aiohttp.ClientError:
@@ -275,7 +282,7 @@ class OnThisDay(commands.Cog):
                     view=YearRangeDropdownView(self),
                 )
 
-    def cache_date(self, date: Optional[datetime.datetime], /) -> Dict[str, int]:
+    def cache_date(self, date: Optional[datetime.datetime], /) -> None:
         if date is None:
             date = now()
 
@@ -285,7 +292,7 @@ class OnThisDay(commands.Cog):
 
     @commands.has_permissions(embed_links=True)
     @commands.group(invoke_without_command=True, aliases=["otd"])
-    async def onthisday(self, ctx: commands.Context, *, date: DateConverter = None):
+    async def onthisday(self, ctx: commands.Context, *, date: Optional[datetime.datetime] = None):
         """Find out what happened on this day, in various different years!
 
         If you want to specify your own date, you can do so by using
@@ -296,7 +303,7 @@ class OnThisDay(commands.Cog):
             await self.run_otd(ctx, date=date, random=False)
 
     @onthisday.command()
-    async def random(self, ctx: commands.Context, *, date: DateConverter = None):
+    async def random(self, ctx: commands.Context, *, date: Optional[datetime.datetime] = None):
         """Find out what happened on this day, in a random year.
 
         If you want to specify your own date, you can do so by using

@@ -1,5 +1,5 @@
 from operator import itemgetter
-from typing import Optional
+from typing import Any, Dict, List, NoReturn, Optional
 
 import discord
 from redbot.core import commands
@@ -7,7 +7,7 @@ from redbot.core.bot import Red
 from redbot.core.commands import Context
 from redbot.core.utils.chat_formatting import quote
 
-CARD_TYPES_DATA = [
+_CARD_TYPES_DATA: List[Dict[str, Any]] = [
     {
         "name": "Christmas",
         "description": "Send a Christmas card",
@@ -129,7 +129,7 @@ CARD_TYPES_DATA = [
     },
 ]
 
-CARD_TYPES_DATA = sorted(CARD_TYPES_DATA, key=itemgetter("name"))
+CARD_TYPES_DATA = sorted(_CARD_TYPES_DATA, key=itemgetter("name"))
 
 
 class CardSelect(discord.ui.Select):
@@ -147,7 +147,7 @@ class CardSelect(discord.ui.Select):
                 label=card["name"],
                 description=card["description"],
                 emoji=card["emoji"],
-                value=index,
+                value=str(index),
             )
             for index, card in enumerate(CARD_TYPES_DATA)
         ]
@@ -196,8 +196,9 @@ class CardSelectView(discord.ui.View):
         return True
 
     async def on_timeout(self):
-        self.select.disabled = True
-        await self.message.edit(view=self)
+        if self.message is not None:
+            self.select.disabled = True
+            await self.message.edit(view=self)
 
 
 class CardBodyModal(discord.ui.Modal):
@@ -249,13 +250,9 @@ class CardBodyModal(discord.ui.Modal):
     REGARD_DEFAULT = "From {sender.name}"
 
     async def on_submit(self, interaction: discord.Interaction):
-        description = self.greet.value or self.GREET_DEFAULT.format(
-            recipient=self.recipient
-        )
+        description = self.greet.value or self.GREET_DEFAULT.format(recipient=self.recipient)
         description += "\n\n" + self.body.value + "\n\n"
-        description += self.regard.value or self.REGARD_DEFAULT.format(
-            sender=self.sender
-        )
+        description += self.regard.value or self.REGARD_DEFAULT.format(sender=self.sender)
         emoji = self.card_data["emoji"]
         embed = discord.Embed(
             title=f"{emoji} {self.card_data['name']} card {emoji}",
@@ -319,7 +316,6 @@ class OpenCardButtonView(discord.ui.View):
             description="Interact with the button below to open it.",
             color=await ctx.embed_colour(),
         )
-
         if self.card_content:
             embed.add_field(
                 name="In response to your card:",
@@ -329,12 +325,9 @@ class OpenCardButtonView(discord.ui.View):
             name=self.sender.name,
             icon_url=self.sender.avatar.url if self.sender.avatar else None,
         )
-
         return embed
 
-    async def start_from_interaction(
-        self, ctx: Context, interaction: discord.Interaction
-    ):
+    async def start_from_interaction(self, ctx: Context, interaction: discord.Interaction):
         self.add_item(OpenCardButton(ctx, self.card_embed))
         self.add_item(
             ReplyButton(
@@ -403,8 +396,9 @@ class SendCards(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     @commands.group(invoke_without_command=True)
     async def sendcard(self, ctx: commands.Context, user: discord.User):
@@ -414,12 +408,10 @@ class SendCards(commands.Cog):
         a user ID, mention, or username. The command will ask you further questions
         in order to get information for the card.
         """
-        view = CardSelectView(ctx, sender=ctx.author, recipient=user)
+        view = CardSelectView(ctx, sender=ctx.author, recipient=user)  # type: ignore[arg-type]
         view.message = await ctx.send(view=view)
 
     @sendcard.command()
     async def types(self, ctx: commands.Context):
         """List all the different card types."""
-        await ctx.maybe_send_embed(
-            "\n".join(f"{c['emoji']} {c['name']}" for c in CARD_TYPES_DATA)
-        )
+        await ctx.maybe_send_embed("\n".join(f"{c['emoji']} {c['name']}" for c in CARD_TYPES_DATA))

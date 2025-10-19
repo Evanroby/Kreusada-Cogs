@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Any, NoReturn, Optional, Union
 
 import dateparser
 import discord
@@ -28,14 +28,14 @@ def date_parse_logic(arg: str) -> datetime:
 class DateConverter(Converter):
     """Date converter which uses dateparser.parse()."""
 
-    async def convert(self, ctx: Context, arg: str) -> datetime:
-        return date_parse_logic(arg)
+    async def convert(self, ctx: Context, argument: Any) -> datetime:  # type: ignore[override]
+        return date_parse_logic(argument)
 
 
 class TimeStampFormatConverter(Converter):
-    async def convert(self, ctx: Context, argument: str):
+    async def convert(self, ctx: Context, argument: Any) -> str:  # type: ignore[override]
         if argument not in timestamp_formats:
-            raise commands.BadFlagArgument(
+            raise commands.BadArgument(
                 f"Invalid timestamp format. Available formats: {', '.join(timestamp_formats)}"
             )
         return argument
@@ -45,18 +45,17 @@ class TimeStampArgumentConverter(FlagConverter):
     format: Optional[str] = commands.flag(
         name="format", default=None, converter=TimeStampFormatConverter, aliases=["f"]
     )
-    content: Optional[str] = commands.flag(
+    content: Union[datetime, str] = commands.flag(
         name="content",
-        default=lambda c: date_parse_logic("now"),
+        default=lambda c: date_parse_logic("now"),  # type: ignore[misc]
         converter=DateConverter,
         aliases=["c"],
         positional=True,
     )
-    raw: Optional[str] = commands.flag(
-        name="raw", default=False, converter=bool, aliases=["r"]
-    )
+    raw: bool = commands.flag(name="raw", default=False, converter=bool, aliases=["r"])
 
-    async def convert(self, ctx: commands.Context, argument: str):
+    @classmethod
+    async def convert(cls, ctx: commands.Context, argument: str):  # type: ignore[override]
         try:
             return await super().convert(ctx, argument)
         except commands.BadFlagArgument as e:
@@ -72,7 +71,7 @@ class TimeStampArgumentConverter(FlagConverter):
                 f"Too many values provided for the {e.flag.attribute!r} option."
             )
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Union[Optional[str], Union[datetime, str], bool]]:
         """debugging"""
         return {
             "format": self.format,
@@ -94,8 +93,9 @@ class TimeStamps(Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     @commands.command(usage="<date_or_time>", aliases=["timestamps"])
     async def timestamp(self, ctx: Context, *, tac: TimeStampArgumentConverter):
@@ -113,8 +113,11 @@ class TimeStamps(Cog):
         - `[p]timestamp 01/10/2021 format:f`
         - `[p]timestamp now raw:true format:R`
         """
+        content = tac.content
+        if isinstance(content, str):
+            content = date_parse_logic(content)
         try:
-            ts = int(tac.content.timestamp())
+            ts = int(content.timestamp())
         except OSError:
             return await ctx.send(
                 "An operating system error occured whilst attempting to get "
@@ -125,9 +128,9 @@ class TimeStamps(Cog):
         else:
             message = "### "
             if tac.format:
-                message += f"**{timestamp_formats[tac.format]}** (`{tac.content}`)"
+                message += f"**{timestamp_formats[tac.format]}** (`{content}`)"
             else:
-                message += f"**Timestamps** (`{tac.content}`)"
+                message += f"**Timestamps** (`{content}`)"
             message += "\n\n"
         # I'm aware that discord.utils.format_dt exists, but I prefer this layout
         # for readability purposes (and its more efficient for this specific use case)
@@ -142,9 +145,7 @@ class TimeStamps(Cog):
                 message += f"`<t:{ts}:{tac.format}>`: "
             message += f"<t:{ts}:{tac.format}>"
         if await ctx.embed_requested() and not tac.raw:
-            embed = discord.Embed(
-                description=message, colour=(await ctx.embed_colour())
-            )
+            embed = discord.Embed(description=message, colour=(await ctx.embed_colour()))
             await ctx.send(embed=embed)
         else:
             await ctx.send(message)

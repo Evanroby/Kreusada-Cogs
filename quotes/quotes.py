@@ -1,3 +1,5 @@
+from typing import Any, NoReturn
+
 import aiohttp
 from redbot.core import commands
 from redbot.core.bot import Red
@@ -21,9 +23,9 @@ class Quotes(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
         """Nothing to delete."""
-        return
+        raise NotImplementedError
 
     @commands.command()
     async def quote(self, ctx: commands.Context):

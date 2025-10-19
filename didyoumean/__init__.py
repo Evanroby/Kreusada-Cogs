@@ -1,4 +1,4 @@
-from redbot.core import Red
+from redbot.core.bot import Red
 from redbot.core.utils import get_end_user_data_statement
 
 from .didyoumean import DidYouMean

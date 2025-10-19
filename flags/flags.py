@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict, Optional, Union
+from typing import Any, Dict, NoReturn, Optional, Union
 
 import aiohttp
 import bs4
@@ -20,15 +20,15 @@ from redbot.core.utils.views import SimpleMenu
 from .menus import LabelledMenu, alpha_2_to_unicode
 
 
-def square(t):
+def square(t: str) -> str:
     return f"[{t}]"
 
 
-def emojify(t):
+def emojify(t: str) -> str:
     return f":{t}:"
 
 
-def format_attr(t):
+def format_attr(t: str) -> str:
     return t.replace("_", " ").title()
 
 
@@ -59,10 +59,12 @@ SPECIAL_IMAGES = {
 }
 
 
-class CountryConverter(Converter):
+class CountryConverter(Converter[Dict[str, Union[str, int, Dict[str, str]]]]):
     """Convert for country input"""
 
-    async def convert(self, ctx: Context, argument: str) -> Optional[Dict[str, Union[str, int]]]:
+    async def convert(  # type: ignore[override]
+        self, ctx: Context, argument: str
+    ) -> Dict[str, Union[str, int, Dict[str, str]]]:
         argument = argument.lower()
         get = pycountry.countries.get
 
@@ -94,7 +96,7 @@ class CountryConverter(Converter):
             if not obj:
                 raise BadArgument("Could not match %r to a country." % argument)
 
-        ret = {
+        ret: Dict[str, Union[str, int, Dict[str, str]]] = {
             "Name": obj.name.title(),
             "title": f":flag_{obj.alpha_2.lower()}: {obj.name}",
             "Emoji": f":flag_{obj.alpha_2.lower()}:",
@@ -104,18 +106,26 @@ class CountryConverter(Converter):
         async with aiohttp.ClientSession() as session:
             async with session.get(INFO_BASE + obj.alpha_2) as req:
                 text = await req.text("utf-8")
-        soup = bs4.BeautifulSoup(text)
-        ret["description"] = soup.find("p", class_="flag-content").text
-        neighbours = {}
+        soup = bs4.BeautifulSoup(text, "html.parser")
+        flag_content = soup.find("p", class_="flag-content")
+        if flag_content and flag_content.text:
+            ret["description"] = flag_content.text
+
+        neighbours: Dict[str, str] = {}
         neighbour_list = soup.find("ul", class_="flag-grid")
         if neighbour_list:
             for li in neighbour_list.find_all("li"):
-                neighbours[li.span.text] = alpha_2_to_unicode(li.img["src"][16:-4])
+                if li.span and li.span.text and li.img and li.img.get("src"):
+                    src = li.img["src"]
+                    if isinstance(src, str):
+                        neighbours[li.span.text] = alpha_2_to_unicode(src[16:-4])
         ret["neighbours"] = neighbours
 
         table = soup.find("table", class_="table-dl")
-        for tr in table.tbody.find_all("tr"):
-            ret[tr.th.text] = tr.td.text
+        if table and table.tbody:
+            for tr in table.tbody.find_all("tr"):
+                if tr.th and tr.th.text and tr.td and tr.td.text:
+                    ret[tr.th.text] = tr.td.text
 
         return ret
 
@@ -133,12 +143,20 @@ class Flags(Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
-    @commands.command()
     @commands.has_permissions(embed_links=True)
-    async def flag(self, ctx: Context, *, argument: CountryConverter):
+    @commands.command()
+    async def flag(
+        self,
+        ctx: Context,
+        *,
+        argument: Dict[str, Union[str, int, Dict[str, str]]] = commands.parameter(
+            converter=CountryConverter
+        ),
+    ):
         """Get the flag for a country.
 
         Either the country name or alpha 2 code can be provided.
@@ -151,18 +169,18 @@ class Flags(Cog):
             - ``[p]flag se``
         """
         description = argument.pop("description", None)
-        image = argument.pop("image")
-        title = argument.pop("title")
-        neighbours = argument.pop("neighbours")
+        image = str(argument.pop("image"))
+        title = str(argument.pop("title"))
+        neighbours = argument.pop("neighbours", {})
 
         embed = discord.Embed(
             title=title,
-            description=description,
+            description=str(description) if description else None,
             color=await ctx.embed_colour(),
-            timestamp=datetime.datetime.now(),
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
         )
 
-        if not neighbours:
+        if not neighbours or not isinstance(neighbours, dict):
             value = "N/A"
         else:
             value = "\n".join(f"{v} {k}" for k, v in neighbours.items())
@@ -175,27 +193,32 @@ class Flags(Cog):
         embed = discord.Embed(
             title=title,
             colour=await ctx.embed_colour(),
-            timestamp=datetime.datetime.now(),
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
         )
 
         overflow = {}
         for k, v in argument.items():
-            if len(v) > 20:
-                overflow[k] = v
+            v_str = str(v)
+            if len(v_str) > 20:
+                overflow[k] = v_str
             else:
-                embed.add_field(name=k, value=v)
+                embed.add_field(name=str(k), value=v_str)
 
         for k, v in overflow.items():
-            embed.add_field(name=k, value=v, inline=False)
+            embed.add_field(name=str(k), value=v, inline=False)
 
         embed.set_thumbnail(url=image)
         menu.add_option("Country Information", embed=embed, emoji="\N{EARTH GLOBE EUROPE-AFRICA}")
-        menu.set_neighbouring_countries(neighbours)
+        if isinstance(neighbours, dict):
+            menu.set_neighbouring_countries(neighbours)
         await menu.start(ctx)
-        # await menu(ctx, [embed], {"\N{CROSS MARK}": close_menu})
 
     @commands.command()
-    async def flagemojis(self, ctx: commands.Context, *countries: CountryConverter):
+    async def flagemojis(
+        self,
+        ctx: commands.Context,
+        *countries: str,
+    ) -> None:
         """Get flag emojis for a list of countries.
 
         **Examples:**
@@ -205,17 +228,32 @@ class Flags(Cog):
         """
         if not countries:
             return await ctx.send_help()
-        message = "\n".join(f"{c['Emoji']} - `{c['Emoji']}` ({c['Name']})" for c in countries)
+
+        # Convert country arguments
+        converter = CountryConverter()
+        converted_countries = []
+        for country in countries:
+            try:
+                result = await converter.convert(ctx, country)
+                converted_countries.append(result)
+            except BadArgument as e:
+                await ctx.send(f"Error with {country}: {e}")
+                return
+
+        message = "\n".join(
+            f"{c['Emoji']} - `{c['Emoji']}` ({c['Name']})" for c in converted_countries
+        )
         for page in pagify(message):
             await ctx.send(page)
 
-    @commands.command()
     @commands.has_permissions(embed_links=True)
-    async def flags(self, ctx: commands.Context, page_number: int = None):
+    @commands.command()
+    async def flags(self, ctx: commands.Context, page_number: Optional[int] = None):
         """Get a list of all the flags and their alpha 2 codes."""
         embeds = []
         message = "\n".join(
-            f":flag_{c.alpha_2.lower()}: `[{c.alpha_2}]` {c.name}" for c in pycountry.countries
+            f":flag_{c.alpha_2.lower()}: `[{c.alpha_2}]` {c.name}"  # type: ignore[union-attr]
+            for c in pycountry.countries
         )
         pages = tuple(pagify(message, page_length=500))
         color = await ctx.embed_colour()

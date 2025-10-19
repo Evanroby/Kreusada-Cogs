@@ -1,5 +1,5 @@
 import io
-from typing import Optional
+from typing import Any, NoReturn, Optional
 
 import black
 import discord
@@ -20,8 +20,9 @@ class BlackFormatter(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """This cog does not store user data."""
+        raise NotImplementedError
 
     @commands.has_permissions(attach_files=True)
     @commands.command(name="black", usage="<file> [line_length=None]")
@@ -43,20 +44,19 @@ class BlackFormatter(commands.Cog):
             try:
                 sort = file.decode(encoding="utf-8")
             except UnicodeDecodeError:
-                return await ctx.send(
-                    "Something went wrong when trying to decode this file."
-                )
+                return await ctx.send("Something went wrong when trying to decode this file.")
 
             try:
                 output = black.format_file_contents(
                     sort,
                     fast=True,
-                    mode=black.FileMode(
-                        line_length=line_length or black.DEFAULT_LINE_LENGTH
-                    ),
+                    mode=black.FileMode(line_length=line_length or 88),
                 )
-            except black.NothingChanged:
-                await ctx.send("There was nothing to change in this code.")
+            except Exception as e:
+                if type(e).__name__ == "NothingChanged":
+                    await ctx.send("There was nothing to change in this code.")
+                else:
+                    raise
             else:
                 await ctx.send(
                     content="See the attached file below, with your formatted code.",

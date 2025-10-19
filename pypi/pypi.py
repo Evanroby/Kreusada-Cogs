@@ -1,5 +1,6 @@
 import io
 import re
+from typing import Any, NoReturn
 
 import aiohttp
 import discord
@@ -15,9 +16,7 @@ from redbot.core.utils.chat_formatting import (
 from .utils import JumpUrlView
 
 URL_RE = re.compile(r"(https?|s?ftp)://(\S+)", re.I)
-GIT_REPO_RE = re.compile(
-    "https://github.com/([a-z0-9]+)/([a-z0-9]+)/?$", flags=re.IGNORECASE
-)
+GIT_REPO_RE = re.compile("https://github.com/([a-z0-9]+)/([a-z0-9]+)/?$", flags=re.IGNORECASE)
 PYTHON_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/2048px-Python-logo-notext.svg.png"
 
 
@@ -27,7 +26,7 @@ class PyPi(commands.Cog):
     __author__ = ["Kreusada", "OofChair"]
     __version__ = "1.1.1"
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.session = aiohttp.ClientSession()
 
@@ -36,14 +35,18 @@ class PyPi(commands.Cog):
         authors = humanize_list(self.__author__)
         return f"{context}\n\nAuthor: {authors}\nVersion: {self.__version__}"
 
-    async def cog_unload(self):
+    async def cog_unload(self) -> None:
         await self.session.close()
+
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     @staticmethod
     def format_classifier_url(classifier: str, include_prefix: bool = False) -> str:
         split = classifier.split(" :: ")
 
-        def replace(x):
+        def replace(x: str) -> str:
             return x.replace(" ", "+")
 
         url = "+%3A%3A+".join(map(replace, split))
@@ -51,13 +54,13 @@ class PyPi(commands.Cog):
             return "https://pypi.org/search/?c=" + url
         return url
 
-    def format_classifiers_url(self, classifiers, include_prefix: bool = True):
+    def format_classifiers_url(self, classifiers: list[str], include_prefix: bool = True) -> str:
         return ("https://pypi.org/search/?c=" if include_prefix else "") + "&c=".join(
             map(self.format_classifier_url, classifiers)
         )
 
     @staticmethod
-    def get_send_kwargs(embed: discord.Embed, **kwargs):
+    def get_send_kwargs(embed: discord.Embed, **kwargs: Any) -> dict[str, Any]:
         embed.set_author(
             name="Python Package Index", icon_url=PYTHON_LOGO, url="https://pypi.org/"
         )
@@ -65,36 +68,31 @@ class PyPi(commands.Cog):
         kwargs["embed"] = embed
         return kwargs
 
-    async def make_request(self, url: str):
+    async def make_request(self, url: str) -> dict[str, Any]:
         async with self.session.get(url) as request:
             if request.status != 200:
                 raise ValueError
             return await request.json()
 
-    @commands.command()
     @commands.bot_has_permissions(embed_links=True)
-    async def pypi(self, ctx, project: str):
+    @commands.command()
+    async def pypi(self, ctx: commands.Context, project: str):
         """Get information about a project on PyPi."""
         async with ctx.typing():
             try:
-                request = await self.make_request(
-                    f"https://pypi.org/pypi/{project}/json"
-                )
+                request = await self.make_request(f"https://pypi.org/pypi/{project}/json")
             except ValueError:
-                embed = discord.Embed(
-                    description=f'There were no results for "{project}".'
-                )
+                embed = discord.Embed(description=f'There were no results for "{project}".')
                 kwargs = self.get_send_kwargs(embed)
-                return await ctx.send(embed=embed)
+                await ctx.send(embed=embed)
+                return
 
         info = request["info"]
         releases = request["releases"]
 
-        kwargs = {}
+        kwargs: dict[str, Any] = {}
 
-        embed = discord.Embed(
-            title=f"{info['name']} {info['version']}", url=info["package_url"]
-        )
+        embed = discord.Embed(title=f"{info['name']} {info['version']}", url=info["package_url"])
         embed.description = info["summary"] or italics(
             "No description was provided for this project."
         )
@@ -103,7 +101,6 @@ class PyPi(commands.Cog):
             embed.add_field(name="Author", value=author)
 
         license = info["license"] or "UNKNOWN"
-        # License is UNKNOWN if unprovided
         if license == "UNKNOWN":
             for c in info["classifiers"]:
                 if "License" in c:
@@ -126,9 +123,7 @@ class PyPi(commands.Cog):
                 name += "s"
             embed.add_field(
                 name=name,
-                value="\n".join(
-                    f"- {inline(x.strip())}" for x in python_requires.split(",")
-                ),
+                value="\n".join(f"- {inline(x.strip())}" for x in python_requires.split(",")),
                 inline=False,
             )
 
@@ -153,14 +148,20 @@ class PyPi(commands.Cog):
         project_urls = info["project_urls"]
         filtered_links = {}
 
+        link: str | None = None
+        default_branch: str | None = None
+
         if project_urls:
             filtered_links = dict(
                 filter(lambda x: URL_RE.match(x[1]), list(info["project_urls"].items()))
             )
-            for link in info["project_urls"].values():
-                match = GIT_REPO_RE.match(link)
+            for link_value in info["project_urls"].values():
+                if not isinstance(link_value, str):
+                    continue
+                match = GIT_REPO_RE.match(link_value)
                 if not match or match.group(1) == "sponsors":
                     continue
+                link = link_value
                 try:
                     details = await self.make_request(
                         ("https://api.github.com/repos/" + link[19:]).rstrip(".git")
@@ -173,7 +174,7 @@ class PyPi(commands.Cog):
             else:
                 default_branch = None
 
-            if default_branch:
+            if default_branch and link:
                 embed.add_field(
                     name="Development Installation",
                     value=box(
@@ -188,9 +189,7 @@ class PyPi(commands.Cog):
             if not (r := releases[release]):
                 continue
             release_time = r[-1]["upload_time"][:10]
-            release_time = "-".join(
-                reversed(release_time.split("-"))
-            )  # format date properly
+            release_time = "-".join(reversed(release_time.split("-")))
             values.append(f"+ {release} (~{release_time})")
 
         if values:
@@ -224,11 +223,9 @@ class PyPi(commands.Cog):
             else:
                 for _, page in enumerate(pagify(data, page_length=1000)):
                     title = "Classifiers"
-                    if _:  # Non-zero ints == True
+                    if _:
                         title += " (continued)"
-                    embed.add_field(
-                        name=title, value=box(page, lang="asciidoc"), inline=False
-                    )
+                    embed.add_field(name=title, value=box(page, lang="asciidoc"), inline=False)
 
         kwargs["view"] = JumpUrlView(info["package_url"], project_urls=filtered_links)
         proper_kwargs = self.get_send_kwargs(embed, **kwargs)

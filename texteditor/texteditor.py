@@ -5,10 +5,11 @@ import random
 import shlex
 import string
 import textwrap
-from typing import Optional
+from typing import Any, List, NoReturn, Optional
 
 import discord
 from redbot.core import commands
+from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import (
     bold,
     box,
@@ -19,7 +20,7 @@ from redbot.core.utils.chat_formatting import (
 )
 
 
-async def send_safe(ctx, message: str) -> None:
+async def send_safe(ctx: commands.Context, message: str) -> None:
     pages = tuple(pagify(message, page_length=1990))
     if len(pages) > 3:
         raise commands.UserFeedbackCheckFailure(
@@ -29,7 +30,7 @@ async def send_safe(ctx, message: str) -> None:
         await ctx.send(box(page))
 
 
-def strip_punctuation(text):
+def strip_punctuation(text: str) -> str:
     translation_table = str.maketrans("", "", string.punctuation)
     return text.translate(translation_table)
 
@@ -42,20 +43,19 @@ class TextEditor(commands.Cog):
     __author__ = "Kreusada"
     __version__ = "3.4.4"
 
-    def __init__(self, bot):
+    def __init__(self, bot: Red):
         self.bot = bot
-        if 719988449867989142 in self.bot.owner_ids:
+        if self.bot.owner_ids and 719988449867989142 in self.bot.owner_ids:
             with contextlib.suppress(RuntimeError, ValueError):
-                self.bot.add_dev_env_value(
-                    self.__class__.__name__.lower(), lambda x: self
-                )
+                self.bot.add_dev_env_value(self.__class__.__name__.lower(), lambda x: self)
 
     def format_help_for_context(self, ctx: commands.Context) -> str:
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     @commands.group()
     async def editor(self, ctx: commands.Context):
@@ -104,10 +104,10 @@ class TextEditor(commands.Cog):
     @editor.command(name="alternating")
     async def editor_alternating(self, ctx: commands.Context, *, text: str):
         """Convert the text to alternating case."""
-        text = list(self)
-        text[0::2] = map(str.upper, text[0::2])
-        text[1::2] = map(str.lower, text[1::2])
-        await send_safe(ctx, "".join(text))
+        text_list: List[str] = list(text)
+        text_list[0::2] = map(str.upper, text_list[0::2])
+        text_list[1::2] = map(str.lower, text_list[1::2])
+        await send_safe(ctx, "".join(text_list))
 
     @editor.command(name="squash")
     async def editor_squash(self, ctx: commands.Context, *, text: str):
@@ -120,9 +120,7 @@ class TextEditor(commands.Cog):
         await send_safe(ctx, text.replace(remove, ""))
 
     @editor.command(name="trim", aliases=["strip"])
-    async def editor_trim(
-        self, ctx: commands.Context, trimmer: Optional[str] = " ", *, text: str
-    ):
+    async def editor_trim(self, ctx: commands.Context, trimmer: Optional[str] = " ", *, text: str):
         """Trim the outskirts of the text."""
         await send_safe(ctx, text.strip(trimmer))
 
@@ -139,9 +137,7 @@ class TextEditor(commands.Cog):
         await send_safe(ctx, text[::-1])
 
     @editor.command(name="multiply")
-    async def editor_multiply(
-        self, ctx: commands.Context, multiplier: int, *, text: str
-    ):
+    async def editor_multiply(self, ctx: commands.Context, multiplier: int, *, text: str):
         """Multiply the text."""
         await send_safe(ctx, text * multiplier)
 
@@ -158,23 +154,17 @@ class TextEditor(commands.Cog):
                 "Please don't use backticks or newlines in the permutator."
             )
         if len(text) > 250:
-            raise commands.UserFeedbackCheckFailure(
-                "Too many characters were provided."
-            )
+            raise commands.UserFeedbackCheckFailure("Too many characters were provided.")
         split = text.split()
         if len(split) > 8:
-            raise commands.UserFeedbackCheckFailure(
-                "Please only provide up to 8 arguments."
-            )
+            raise commands.UserFeedbackCheckFailure("Please only provide up to 8 arguments.")
         permutations = [" ".join(p) for p in itertools.permutations(split)]
         message = "Generated permutations (%s [!%s])" % (len(permutations), len(split))
         join = "\n".join(permutations)
         if len(permutations) > 24:
             message += "\n(See attached file for full permutation)\n\n"
             message += "\n".join(permutations[:24])
-            file = discord.File(
-                io.BytesIO(join.encode("utf-8")), filename="permutations.txt"
-            )
+            file = discord.File(io.BytesIO(join.encode("utf-8")), filename="permutations.txt")
         else:
             message += "\n" + join
             file = None
@@ -186,7 +176,7 @@ class TextEditor(commands.Cog):
         self,
         ctx: commands.Context,
         cut_length: int,
-        cut_words: Optional[bool] = True,
+        cut_words: bool = True,
         *,
         text: str,
     ):
@@ -254,9 +244,7 @@ class TextEditor(commands.Cog):
         if len(palindromes) == 1:
             msg = success("The following palindrome was found: " + palindromes[0])
         elif palindromes:
-            msg = success(
-                "The following palindromes were found: " + humanize_list(palindromes)
-            )
+            msg = success("The following palindromes were found: " + humanize_list(palindromes))
         else:
             msg = error("No palindromes found.")
         await send_safe(ctx, msg)

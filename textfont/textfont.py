@@ -1,3 +1,5 @@
+from typing import Any, List, NoReturn
+
 import discord
 from redbot.core import commands
 
@@ -1063,7 +1065,7 @@ NORMALIZED_FONTS = {
 }
 
 
-def render(font: str, text: str):
+def render(font: str, text: str) -> str:
     return text.translate(str.maketrans(FONTS[font]))
 
 
@@ -1071,10 +1073,11 @@ class FontView(discord.ui.View):
     def __init__(self, text: str):
         super().__init__()
         self.text = text
-        self.latest_values: list[str] = []
-        self.add_item(FontSelect(text))
+        self.latest_values: List[str] = []
+        self.font_select = FontSelect(text)
+        self.add_item(self.font_select)
 
-    def format_fonts(self, fonts: list[str] = []):
+    def format_fonts(self, fonts: List[str] = []) -> str:
         if not fonts:
             fonts = sorted(FONTS)
         if len(fonts) == 1:
@@ -1085,14 +1088,14 @@ class FontView(discord.ui.View):
 
     @discord.ui.button(label="All Fonts", row=2)
     async def font_select_all_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self, interaction: discord.Interaction, button: discord.ui.Button["FontView"]
     ):
         self.latest_values = list(FONTS)
         await interaction.response.edit_message(content=self.format_fonts())
 
     @discord.ui.button(label="Change Text", row=2)
     async def font_change_text_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self, interaction: discord.Interaction, button: discord.ui.Button["FontView"]
     ):
         await interaction.response.send_modal(FontTextChangeModal(self))
 
@@ -1159,7 +1162,7 @@ class FontTextChangeModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         self.view.text = new_text = self.new_text.value
-        self.view.children[-1].regenerate_options()
+        self.view.font_select.regenerate_options()  # Changed from self.view.children[-1]
         if not (latest := self.view.latest_values):
             content = f"Text: {new_text}\nUse the dropdown below to change the font!"
         else:
@@ -1179,8 +1182,9 @@ class TextFont(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     @commands.command()
     async def write(self, ctx: commands.Context, *, text: str):

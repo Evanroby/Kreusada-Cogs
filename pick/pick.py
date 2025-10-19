@@ -1,5 +1,5 @@
 import random
-from typing import Optional
+from typing import Any, NoReturn, Optional
 
 import discord
 from redbot.core import commands
@@ -12,9 +12,9 @@ class Pick(commands.Cog):
     __version__ = "1.0.1"
     __author__ = "Kreusada, saurichable, AAA3A"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        # nothing to delete
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     def format_help_for_context(self, ctx: commands.Context) -> str:
         context = super().format_help_for_context(ctx)
@@ -24,6 +24,8 @@ class Pick(commands.Cog):
     @commands.guild_only()
     async def pick(self, ctx: commands.Context, *, role: Optional[discord.Role] = None):
         """Pick a random member. You may supply a role to pick from."""
+        if not ctx.guild:
+            return
         role = role or ctx.guild.default_role
         if not role.members:
             return await ctx.send("That role has no members to pick from.")
@@ -35,25 +37,22 @@ class Pick(commands.Cog):
         embed.set_image(url=winner.banner.url if winner.banner else None)
         embed.add_field(
             name="Chosen amongst:",
-            value=f"{role.mention} ({role.id})"
-            if role != ctx.guild.default_role
-            else "Everyone",
+            value=f"{role.mention} ({role.id})" if role != ctx.guild.default_role else "Everyone",
         )
-        embed.set_author(
-            name=winner, icon_url=winner.avatar.url if winner.avatar else None
-        )
+        embed.set_author(name=winner, icon_url=winner.avatar.url if winner.avatar else None)
         await ctx.send(embed=embed)
 
     @commands.command()
     @commands.guild_only()
-    async def pickid(
-        self, ctx: commands.Context, *, role: Optional[discord.Role] = None
-    ):
+    async def pickid(self, ctx: commands.Context, *, role: Optional[discord.Role] = None):
         """Pick a random member, displaying the ID only. You may supply a role to pick from.
 
         This can be integrated with [nestedcommands by tmerc](https://github.com/tmercswims/tmerc-cogs)
         Example of usage: `[p]say Congratulations <@$(pick True)>! You won!`
         """
+        if not ctx.guild:
+            return
+        role = role or ctx.guild.default_role
         if not role.members:
             return await ctx.send("That role has no members to pick from.")
-        await ctx.send(str(random.choice((role or ctx.guild.default_role).members).id))
+        await ctx.send(str(random.choice(role.members).id))

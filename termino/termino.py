@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Literal, Optional
+from typing import Any, Callable, Dict, Literal, NoReturn, Optional, Union
 
 import discord
 from redbot.core import Config, commands
@@ -9,12 +9,10 @@ from redbot.core.utils.chat_formatting import box
 from redbot.core.utils.predicates import MessagePredicate
 
 log = logging.getLogger("red.kreusada.termino")
-
-OLD_RESTART_COMMAND: commands.Command = None
-OLD_SHUTDOWN_COMMAND: commands.Command = None
+OLD_RESTART_COMMAND: Optional[commands.Command] = None
+OLD_SHUTDOWN_COMMAND: Optional[commands.Command] = None
 DEFAULT_WAVE: str = "\N{WAVING HAND SIGN}\N{EMOJI MODIFIER FITZPATRICK TYPE-3}"
-
-FORMAT_MAPPING = {
+FORMAT_MAPPING: Dict[str, Callable[[Union[discord.User, discord.Member]], str]] = {
     "$name": lambda user: user.name,
     "$discriminator": lambda user: str(user.discriminator),
     "$id": lambda user: str(user.id),
@@ -43,7 +41,7 @@ class Termino(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    def cog_unload(self) -> None:
+    async def cog_unload(self) -> None:
         global OLD_RESTART_COMMAND, OLD_SHUTDOWN_COMMAND
         if OLD_SHUTDOWN_COMMAND:
             try:
@@ -58,21 +56,25 @@ class Termino(commands.Cog):
                 log.info(e)
             self.bot.add_command(OLD_RESTART_COMMAND)
 
-    @commands.group()
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
+
     @commands.is_owner()
+    @commands.group()
     async def terminoset(self, ctx: commands.Context) -> None:
         """Configure Termino messages."""
         pass
 
-    @terminoset.group(name="restart")
+    @terminoset.group(name="restart")  # type: ignore
     async def terminoset_restart(self, ctx: commands.Context) -> None:
         """Set Termino's restart settings."""
 
-    @terminoset.group(name="shutdown")
+    @terminoset.group(name="shutdown")  # type: ignore
     async def terminoset_shutdown(self, ctx: commands.Context) -> None:
         """Set Termino's shutdown settings."""
 
-    def format_message(self, author: discord.Member, message: str) -> str:
+    def format_message(self, author: Union[discord.User, discord.Member], message: str) -> str:
         for key, value in FORMAT_MAPPING.items():
             message = message.replace(key, value(author))
         return message
@@ -80,9 +82,7 @@ class Termino(commands.Cog):
     async def maybe_confirm(
         self, ctx: commands.Context, *, type: Literal["shutdown", "restart"]
     ) -> bool:
-        config_obj = getattr(
-            self.config, "{type}_confirmation_message".format(type=type)
-        )
+        config_obj = getattr(self.config, "{type}_confirmation_message".format(type=type))
         message = await config_obj()
         if not message:
             return True
@@ -100,9 +100,7 @@ class Termino(commands.Cog):
             return True
 
     @terminoset_restart.command(name="message")
-    async def terminoset_restart_message(
-        self, ctx: commands.Context, *, message: str
-    ) -> None:
+    async def terminoset_restart_message(self, ctx: commands.Context, *, message: str) -> None:
         """Set Termino's restart message."""
         await self.config.restart_message.set(message)
         await ctx.send("Restart message set.")
@@ -114,14 +112,13 @@ class Termino(commands.Cog):
         """Set Termino's restart confirmation message."""
         if not message:
             await self.config.restart_confirmation_message.clear()
-            return await ctx.send("Restart confirmation disabled.")
+            await ctx.send("Restart confirmation disabled.")
+            return
         await self.config.restart_confirmation_message.set(message)
         await ctx.send("Restart confirmation message set.")
 
     @terminoset_shutdown.command(name="message")
-    async def terminoset_shutdown_message(
-        self, ctx: commands.Context, *, message: str
-    ) -> None:
+    async def terminoset_shutdown_message(self, ctx: commands.Context, *, message: str) -> None:
         """Set Termino's shutdown message."""
         await self.config.shutdown_message.set(message)
         await ctx.send("Shutdown message set.")
@@ -133,15 +130,14 @@ class Termino(commands.Cog):
         """Set Termino's shutdown confirmation message."""
         if not message:
             await self.config.shutdown_confirmation_message.clear()
-            return await ctx.send("Shutdown confirmation disabled.")
+            await ctx.send("Shutdown confirmation disabled.")
+            return
         await self.config.shutdown_confirmation_message.set(message)
         await ctx.send("Shutdown confirmation message set.")
 
-    @commands.command()
     @commands.is_owner()
-    async def shutdown(
-        self, ctx: commands.Context, force: Optional[bool] = False
-    ) -> None:
+    @commands.command()
+    async def shutdown(self, ctx: commands.Context, force: Optional[bool] = False) -> None:
         """Shuts down the bot.
 
         Allows [botname] to shut down gracefully.
@@ -158,16 +154,12 @@ class Termino(commands.Cog):
         await ctx.send(self.format_message(ctx.author, message))
         await self.bot.shutdown()
 
-    @commands.command()
     @commands.is_owner()
-    async def restart(
-        self, ctx: commands.Context, force: Optional[bool] = False
-    ) -> None:
+    @commands.command()
+    async def restart(self, ctx: commands.Context, force: Optional[bool] = False) -> None:
         """Attempts to restart [botname].
-
         Makes [botname] quit with exit code 26.
         The restart is not guaranteed: it must be dealt with by the process manager in use.
-
         Use the `force` argument to skip confirmation (if set).
         """
         if not force:
@@ -178,7 +170,7 @@ class Termino(commands.Cog):
         await ctx.send(self.format_message(ctx.author, message))
         await self.bot.shutdown(restart=True)
 
-    @terminoset.command(name="settings", aliases=["showsettings"])
+    @terminoset.command(name="settings", aliases=["showsettings"])  # type: ignore
     async def terminoset_settings(self, ctx: commands.Context) -> None:
         """Shows the current settings for Termino."""
         config = await self.config.all()

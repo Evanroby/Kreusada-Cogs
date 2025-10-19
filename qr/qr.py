@@ -5,7 +5,7 @@ import json
 import operator
 import pathlib
 import random
-from typing import Literal
+from typing import Any, Literal, NoReturn, TypeVar
 
 import discord
 import qrcode
@@ -14,6 +14,8 @@ from qrcode.image import styledpil, styles
 from redbot.core import commands
 from redbot.core.bot import Red
 from redbot.core.utils.predicates import MessagePredicate
+
+BotT = TypeVar("BotT", bound=Red)
 
 _EXCLUDED_COLOURS = (
     # These colors are excluded from showing as examples,
@@ -84,7 +86,7 @@ If you want the 'classic' QR code style, `1` is the option you'd want to go for.
 DEFAULT_COLOR_MESSAGE_HEADER = "Please provide a **{0}** colour.\n"
 
 
-def DEFAULT_COLOR_MESSAGE():
+def DEFAULT_COLOR_MESSAGE() -> str:
     return f"""
 This should be provided as a hex code.
 
@@ -107,7 +109,7 @@ with open(pathlib.Path(__file__).parent / "info.json") as fp:
 
 
 class ColourConverter(commands.ColourConverter):
-    async def convert(self, ctx, argument: str):
+    async def convert(self, ctx: commands.Context[BotT], argument: str) -> discord.Colour:  # type: ignore[override]
         extra_map = {"black": 0, "white": 16777215}
         try:
             original_arg = await super().convert(ctx, argument)
@@ -132,19 +134,19 @@ class QR(commands.Cog):
         self.bot = bot
         self.styles = {
             "drawers": {
-                1: styles.moduledrawers.SquareModuleDrawer(),
-                2: styles.moduledrawers.GappedSquareModuleDrawer(),
-                3: styles.moduledrawers.CircleModuleDrawer(),
-                4: styles.moduledrawers.RoundedModuleDrawer(),
-                5: styles.moduledrawers.VerticalBarsDrawer(),
-                6: styles.moduledrawers.HorizontalBarsDrawer(),
+                1: styles.moduledrawers.SquareModuleDrawer(),  # type: ignore[attr-defined]
+                2: styles.moduledrawers.GappedSquareModuleDrawer(),  # type: ignore[attr-defined]
+                3: styles.moduledrawers.CircleModuleDrawer(),  # type: ignore[attr-defined]
+                4: styles.moduledrawers.RoundedModuleDrawer(),  # type: ignore[attr-defined]
+                5: styles.moduledrawers.VerticalBarsDrawer(),  # type: ignore[attr-defined]
+                6: styles.moduledrawers.HorizontalBarsDrawer(),  # type: ignore[attr-defined]
             },
             "masks": {
-                1: styles.colormasks.SolidFillColorMask(),
-                2: styles.colormasks.RadialGradiantColorMask(),
-                3: styles.colormasks.SquareGradiantColorMask(),
-                4: styles.colormasks.HorizontalGradiantColorMask(),
-                5: styles.colormasks.VerticalGradiantColorMask(),
+                1: styles.colormasks.SolidFillColorMask(),  # type: ignore[attr-defined]
+                2: styles.colormasks.RadialGradiantColorMask(),  # type: ignore[attr-defined]
+                3: styles.colormasks.SquareGradiantColorMask(),  # type: ignore[attr-defined]
+                4: styles.colormasks.HorizontalGradiantColorMask(),  # type: ignore[attr-defined]
+                5: styles.colormasks.VerticalGradiantColorMask(),  # type: ignore[attr-defined]
             },
         }
 
@@ -152,42 +154,44 @@ class QR(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
-    async def convert_colour(self, ctx: commands.Context, content: str):
+    async def convert_colour(self, ctx: commands.Context, content: str) -> discord.Colour | str:
         colour_converter = ColourConverter()
+        ret: discord.Colour | str
         try:
             ret = await colour_converter.convert(ctx, content)
         except commands.BadArgument:
             ret = f'Failed to identify a colour from "{content}" - please start over.'
-        finally:
-            return ret
+        return ret
 
-    async def get_colour_data(self, ctx, shade: Literal["background", "fill"]):
-        def check(x):
-            return all(
-                operator.eq(getattr(ctx, y), getattr(x, y))
-                for y in ("author", "channel")
-            )
+    async def get_colour_data(
+        self, ctx: commands.Context, shade: Literal["background", "fill"]
+    ) -> dict[str, tuple[int, int, int]] | Literal[False]:
+        def check(x: discord.Message) -> bool:
+            return all(operator.eq(getattr(ctx, y), getattr(x, y)) for y in ("author", "channel"))
 
         message = DEFAULT_COLOR_MESSAGE_HEADER.format(shade) + DEFAULT_COLOR_MESSAGE()
         await ctx.maybe_send_embed(message)
 
         try:
-            message = await self.bot.wait_for("message", check=check, timeout=100)
+            message_obj = await self.bot.wait_for("message", check=check, timeout=100)
         except asyncio.TimeoutError:
             await ctx.send("You took too long to respond, please start over.")
             return False
         else:
-            color = await self.convert_colour(ctx, message.content)
+            color = await self.convert_colour(ctx, message_obj.content)
             if not isinstance(color, discord.Colour):
                 await ctx.send(color)
                 return False
 
             return {f"{shade[:4]}_color": color.to_rgb()}
 
-    async def get_style_data(self, ctx, style_type: Literal["drawers", "masks"]):
+    async def get_style_data(
+        self, ctx: commands.Context, style_type: Literal["drawers", "masks"]
+    ) -> dict[str, Any] | Literal[False]:
         mapper = {
             "drawers": {
                 "message": DEFAULT_DRAWER_MESSAGE,
@@ -196,7 +200,7 @@ class QR(commands.Cog):
             "masks": {"message": DEFAULT_MASK_MESSAGE, "kwarg_key": "color_mask"},
         }
 
-        def pred(x):
+        def pred(x: int) -> Any:
             return MessagePredicate.contained_in(list(map(str, range(1, x + 1))))
 
         await ctx.maybe_send_embed(mapper[style_type]["message"])
@@ -207,12 +211,9 @@ class QR(commands.Cog):
             await ctx.send("You took too long to respond, please start over.")
             return False
         else:
-            return {
-                mapper[style_type]["kwarg_key"]: self.styles[style_type][
-                    int(message.content)
-                ]
-            }
+            return {mapper[style_type]["kwarg_key"]: self.styles[style_type][int(message.content)]}
 
+    @commands.bot_has_permissions(embed_links=True)
     @commands.command()
     async def qr(self, ctx: commands.Context, *, text: str):
         """Create a QR code from text.
@@ -224,10 +225,10 @@ class QR(commands.Cog):
             await ctx.send("Please provide a sensible number of characters.")
             return
 
-        qrc = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_L)
+        qrc = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_L)  # type: ignore[attr-defined]
         qrc.add_data(text)
 
-        def pred(x):
+        def pred(x: int) -> Any:
             return MessagePredicate.contained_in(list(map(str, range(1, x + 1))))
 
         await ctx.maybe_send_embed(DEFAULT_OPENING_MESSAGE.format(text))
@@ -238,25 +239,23 @@ class QR(commands.Cog):
             await ctx.send("You took too long to respond, please start over.")
             return
         else:
-            result = int(result.content)
-            qrc_kwargs = {}
-            embed_kwargs = {"color": 16777215}
+            result_num = int(result.content)
+            qrc_kwargs: dict[str, Any] = {}
+            embed_kwargs: dict[str, Any] = {"colour": discord.Colour(16777215)}
 
-            if result == 1:
+            if result_num == 1:
                 for shade in ("background", "fill"):
-                    update = await self.get_colour_data(ctx, shade)
+                    update = await self.get_colour_data(ctx, shade)  # type: ignore[arg-type]
                     if update is False:
                         return
                     if shade == "background":
-                        embed_kwargs["color"] = discord.Colour.from_rgb(
-                            *update["back_color"]
-                        )
+                        embed_kwargs["colour"] = discord.Colour.from_rgb(*update["back_color"])
                     qrc_kwargs.update(update)
 
-            if result == 2:
+            if result_num == 2:
                 qrc_kwargs["image_factory"] = styledpil.StyledPilImage
                 for style_type in ("drawers", "masks"):
-                    update = await self.get_style_data(ctx, style_type)
+                    update = await self.get_style_data(ctx, style_type)  # type: ignore[arg-type]
                     if update is False:
                         return
                     qrc_kwargs.update(update)
@@ -264,15 +263,15 @@ class QR(commands.Cog):
         confirmation_message = await ctx.maybe_send_embed("Generating QR code...")
         async with ctx.typing():
             await asyncio.sleep(1)
-            sender_kwargs = {}
+            sender_kwargs: dict[str, Any] = {}
 
             try:
-                qrc = qrc.make_image(**qrc_kwargs)
+                qrc_image = qrc.make_image(**qrc_kwargs)
             except DataOverflowError:
                 sender_kwargs["content"] = "Failed to create a QR code for this text."
             else:
                 buff = io.BytesIO()
-                qrc.save(buff, "png")
+                qrc_image.save(buff, "png")
                 buff.seek(0)
                 if await ctx.embed_requested():
                     embed = discord.Embed(**embed_kwargs)

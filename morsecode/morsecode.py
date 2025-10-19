@@ -1,3 +1,5 @@
+from typing import Any, NoReturn
+
 from morse3 import Morse  # type: ignore
 from redbot.core import commands
 from redbot.core.utils.chat_formatting import box, pagify
@@ -13,18 +15,19 @@ class MorseCode(commands.Cog):
         context = super().format_help_for_context(ctx)
         return f"{context}\n\nAuthor: {self.__author__}\nVersion: {self.__version__}"
 
-    async def red_delete_data_for_user(self, **kwargs):
-        return
+    async def red_delete_data_for_user(self, **kwargs: Any) -> NoReturn:
+        """Nothing to delete."""
+        raise NotImplementedError
 
     @staticmethod
-    def safe_morse_encode(text: str):
+    def safe_morse_encode(text: str) -> str:
         try:
             return Morse(text).stringToMorse()
         except Exception as e:
             return str(e)
 
     @staticmethod
-    def safe_morse_decode(morse_code: str):
+    def safe_morse_decode(morse_code: str) -> str:
         try:
             return Morse(morse_code).morseToString()
         except Exception as e:
